@@ -49,9 +49,9 @@ for(STAlevel.i in 1:length(STAs)){
 	dataForDamFac <- rbind(dataForDamFac,dataForThisSTA)
 	rm('y','ylag','yfut','ygro','dataForThisSTA','gdpForThisSTA','gdpForThisSTA.lag','gdpForThisSTA.fut')
 }
+numIDs <- length(unique(id))
 
 # synth counterfact models ####
-
 cat('calculating synthetic growth models...')
 dataForSyntheticCounterfactual <- dataForDamFacSTAs.lst[[which(STAs==0)]]
 # for testing
@@ -72,11 +72,12 @@ cl <- makePSOCKcluster(detectCores())
 clusterExport(cl,'dataForSyntheticCounterfactual')
 parRes <- parLapply(cl,unique(id),parSynthPredGDP)
 stopCluster(cl)
-cat('done\ncalculating climate related losses...')
+cat('done\n')
 
-groMod0Coefs <- matrix(unlist(parRes),nrow=length(unique(id)),byrow=T)
+# losses ####
+cat('calculating climate related losses...')
+groMod0Coefs <- matrix(unlist(parRes),nrow=numIDs,byrow=T)
 colnames(groMod0Coefs) <- names(parRes[[1]])
-
 # this relies on the dataFoorDamFac being ordered by sta, year, id. I.e.
 # id year STA
 # 1   1    1
@@ -90,13 +91,23 @@ dataForDamFac$predGro <- rep(groMod0Coefs[,'(Intercept)'],numEntriesPerId) + dat
 # predicted gdp if STA were 0
 dataForDamFac$predy <- dataForDamFac$ylag+
 	rep(groMod0Coefs[,'(Intercept)'],numEntriesPerId) + dataForDamFac$ylag * rep(groMod0Coefs[,'y'],numEntriesPerId)
-
 # loss from climate is difference between predicted (if STA were 0) - actual gdp
 dataForDamFac$yloss <- dataForDamFac$predy - dataForDamFac$y
 # as relative
 dataForDamFac$yRelLoss <- dataForDamFac$yloss/dataForDamFac$predy
-cat('done\nplotting...')
+# mean losses per ensemble member
+dataForDamFacAgg <- matrix(NA,nrow=numIDs,ncol=1+length(STAs))
+colnames(dataForDamFacAgg) <- c('id',paste('STA',STAs))
+dataForDamFacAgg <- as.data.frame(dataForDamFacAgg)
+dataForDamFacAgg$id <- unique(id)
+for(STAlevel.i in 1:length(STAs)){
+	dataForThisSTA <- dataForDamFac[dataForDamFac$STA==STAs[STAlevel.i]&!is.na(dataForDamFac$yRelLoss),c('id','yRelLoss')]
+	dataForDamFacAgg[,STAlevel.i+1] <- tapply(dataForThisSTA$yRelLoss,dataForThisSTA$id,mean,na.rm=T)
+}
+cat('done\n')
 
+# plots ####
+cat('plotting...')
 # 
 # plot(0,0,type='n',
 # 		 ylim=c(-4e4,1.5e5),xlim=c(0,4e6),
@@ -114,16 +125,27 @@ cat('done\nplotting...')
 # 
 # legend('topleft',legend=paste0('STA ',STAs,'°'),pch=20,col=STAs+1)
 
-
+source('myRudiVioPlot.R')
 plot(0,0,
 		 xlab='STA degC',ylab='Annual percentage loss of GDP',
 		 xlim=c(0, 7),
-		 ylim=c(-20,70),
-		 type='n')
+		 ylim=c(-10,80),
+		 type='n',yaxs='i')
 grid()	
 # points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
 for(STA in STAs){
-	boxplot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,at=STA,add=T,boxwex=0.15,axes=F)
+	myRudiViolinPlot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,
+					at=STA,col='white',add=T,width=0.3,border='black',lwd=3,
+					equiprobspacing = T,n=100)
+	boxplot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,at=STA,col='white',add=T,boxwex=0.4,axes=F,range = 0,border='black',lwd=2)
+	myRudiViolinPlot(as.vector(dataForDamFacAgg[[paste('STA',STA)]])*100,
+									 at=STA,col=NA,border.col = 'gray',add=T,width=0.3,lwd=2,
+									 equiprobspacing = T,n=100)
+	boxplot(dataForDamFacAgg[[paste('STA',STA)]]*100,at=STA,col='white',border='gray',add=T,boxwex=0.15,axes=F,range = 0,lwd=2)
 }
+figDir <- file.path('figures','ipccDamages')
+dir.create(figDir,F,T)
+dev.copy(png,file.path(figDir,'ipccDamgeFunction'),width='960',height='1380')
+dev.off()
 
 cat('done\n')
