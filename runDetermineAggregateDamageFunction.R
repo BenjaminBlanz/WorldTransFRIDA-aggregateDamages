@@ -30,7 +30,7 @@ if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',baselineExpID
 							 '--pol','policy_EMB.csv',
 							 '--cfb','ClimateFeedback_On.csv',
 							 '--sta','ClimateSTAOverride_Off.csv',
-							 '-s',expIDpreString))
+							 '-s',paste0(expIDpreString,'_Baseline')))
 	setwd(aggDamWD)
 	stop('Baseline run has been submitted to SLURM, please restart this script once the baseline run has completed\n')
 }
