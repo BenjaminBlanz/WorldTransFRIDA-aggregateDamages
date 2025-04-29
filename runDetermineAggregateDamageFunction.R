@@ -82,7 +82,6 @@ if(sum(forcedRuns$status=='not present')>0){
 # return to the aggDam working directory
 setwd(aggDamWD)
 
-
 # read STA data ####
 dataForDamFac <- data.frame(id=numeric(),y=numeric(),ylag=numeric(),yfut=numeric(),year=numeric(),STA=numeric())
 dataForDamFacSTAs.lst <- list()
