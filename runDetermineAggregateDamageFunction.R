@@ -24,7 +24,7 @@ setwd(location.fridaUncertaintyWD)
 # send off the baseline run
 expIDpreString <- 'determineAggDam'
 baselineExpID <- paste0(expIDpreString,'_Baseline-S',numSample,'-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off')
-if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',baselineExpID,'status'))){
+if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',baselineExpID))){
 	system(paste('./submit_UncertaintyAnalysisLevante.sh',
 							 '-n',numSample,
 							 '--pol','policy_EMB.csv',
@@ -51,7 +51,7 @@ for(STA.i in 1:length(STAs)){
 	forcedRuns$staOverrideFileName[STA.i] <- staOverrideFileName
 	expID <- paste0(expIDpreString,'_Baseline-S',numSample,'-policy_EMB-ClimateFeedback_On-',tools::file_path_sans_ext(staOverrideFileName))
 	forcedRuns$expID[STA.i] <- expID
-	if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',expID,'status'))){
+	if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',expID))){
 		forcedRuns$status[STA.i] <- 'not present'
 	} else if (readChar('test',file.info('test')$size-1)=='completed'){
 		forcedRuns$status[STA.i] <- 'completed'
