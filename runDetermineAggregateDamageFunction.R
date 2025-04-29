@@ -22,14 +22,15 @@ setwd(location.fridaUncertaintyWD)
 
 # baseline run ####
 # send off the baseline run
-baselineExpID <- paste0('determineAggDamBaseline-n-',numSample)
+expIDpreString <- 'determineAggDam'
+baselineExpID <- paste0(expIDpreString,'_Baseline-S',numSample,'-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off')
 if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',baselineExpID,'status'))){
 	system(paste('./submit_UncertaintyAnalysisLevante.sh',
 							 '-n',numSample,
 							 '--pol','policy_EMB.csv',
 							 '--cfb','ClimateFeedback_On.csv',
 							 '--sta','ClimateSTAOverride_Off.csv',
-							 '--expID',baselineExpID))
+							 '--s',baselineExpIDpreString))
 	setwd(aggDamWD)
 	stop('Baseline run has been submitted to SLURM, please restart this script once the baseline run has completed\n')
 }
@@ -41,13 +42,14 @@ if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',baselineExpID
 
 # forced STA runs ####
 # send off the forced STA runs
+forcedRunsExpIDpreSring <- ''
 forcedRuns <- data.frame(STA=STAs,expID=NA,staOverrideFileName=NA,status=NA)
 for(STA.i in 1:length(STAs)){
 	staOverrideFileName <- writeSTAForcing(
 		outputLocation=file.path(location.fridaUncertaintyWD,'FRIDA-configs'),
 		STAOverride=STA)
 	forcedRuns$staOverrideFileName[STA.i] <- staOverrideFileName
-	expID <- paste0(baselineExpID,'-',tools::file_path_sans_ext(staOverrideFileName))
+	expID <- paste0(expIDpreString,'_Baseline-S',numSample,'-policy_EMB-ClimateFeedback_On-',tools::file_path_sans_ext(staOverrideFileName))
 	forcedRuns$expID[STA.i] <- expID
 	if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',expID,'status'))){
 		forcedRuns$status[STA.i] <- 'not present'
@@ -67,7 +69,7 @@ if(sum(forcedRuns$status=='not present')>0){
 								 '--pol','policy_EMB.csv',
 								 '--cfb','ClimateFeedback_On.csv',
 								 '--sta',staOverrideFileName,
-								 '--expID',expID,
+								 '-s',expIDpreString,
 								 '--cid',baselineExpID,
 								 '--spps','true',
 								 '--cpsp','true'))
