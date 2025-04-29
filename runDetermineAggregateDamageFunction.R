@@ -1,23 +1,86 @@
-source('funRunFRIDA.R')
-location.frida <- 'FRIDAforUncertaintyAnalysis'
+aggDamWD <- getwd()
+source('config-DetermineAggregateDamageFunction.R')
 
-writeSTAForcing <- function(location.frida,
+# function that writes the ClimateSTAOverride.csv file for use in 
+# FRIDAforUncertaintyAnalysis
+writeSTAForcing <- function(outputLocation,
 														STAOverride,aggregateDamageFormationTime=1){
-	sink(file.path(location.frida,'Data','ClimateSTAOverride.csv'),
+	filename <- paste0('ClimateSTAOverride_',gsub('\\.','_',STAOverride),'.csv')
+	sink(file.path(outputLocation,filename),
 			 append = F)
 	cat('Energy Balance Model.SWITCH STA Override,1\n')
 	cat(sprintf('Energy Balance Model.STA Override,%f\n',
-							 STAOverride))
+							STAOverride))
 	cat(sprintf('Energy Balance Model.Aggregate Damage Formation Time,%f\n',
-							 aggregateDamageFormationTime))
+							aggregateDamageFormationTime))
 	sink()
+	return(filename)
 }
 
-# The first STA has to be 0 for the model code below to work
-STAs <- c(0,1,2,3)
+# enter the uncertainty analysis directory
+setwd(location.fridaUncertaintyWD)
 
-# run forced ensemble runs for all the STAs and then proceed
-# TODO: automate this step
+# baseline run ####
+# send off the baseline run
+baselineExpID <- paste0('determineAggDamBaseline-n-',numSample)
+if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',baselineExpID,'status'))){
+	system(paste('./submit_UncertaintyAnalysisLevante.sh',
+							 '-n',numSample,
+							 '--pol','policy_EMB.csv',
+							 '--cfb','ClimateFeedback_On.csv',
+							 '--sta','ClimateSTAOverride_Off.csv',
+							 '--expID',baselineExpID))
+	setwd(aggDamWD)
+	stop('Baseline run has been submitted to SLURM, please restart this script once the baseline run has completed\n')
+}
+if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',baselineExpID,'status'))||
+	 !readChar('test',file.info('test')$size-1)=='completed'){
+	setwd(aggDamWD)
+	stop('Baseline run has not completed yet. Run this script again once it has completed.\n')
+}
+
+# forced STA runs ####
+# send off the forced STA runs
+forcedRuns <- data.frame(STA=STAs,expID=NA,staOverrideFileName=NA,status=NA)
+for(STA.i in 1:length(STAs)){
+	staOverrideFileName <- writeSTAForcing(
+		outputLocation=file.path(location.fridaUncertaintyWD,'FRIDA-configs'),
+		STAOverride=STA)
+	forcedRuns$staOverrideFileName[STA.i] <- staOverrideFileName
+	expID <- paste0(baselineExpID,'-',tools::file_path_sans_ext(staOverrideFileName))
+	forcedRuns$expID[STA.i] <- expID
+	if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',expID,'status'))){
+		forcedRuns$status[STA.i] <- 'not present'
+	} else if (readChar('test',file.info('test')$size-1)=='completed'){
+		forcedRuns$status[STA.i] <- 'completed'
+	} else {
+		forcedRuns$status[STA.i] <- 'presumed running'
+	}
+}
+if(sum(forcedRuns$status=='not present')>0){
+	for(STA.i in which(forcedRuns$status=='not present')){
+		staOverrideFileName <- forcedRuns$staOverrideFileName[STA.i]
+		expID <- forcedRuns$expID[STA.i]
+		expIDs$expID[STA.i] <- expID
+		system(paste('./submit_UncertaintyAnalysisLevante.sh',
+								 '-n',numSample,
+								 '--pol','policy_EMB.csv',
+								 '--cfb','ClimateFeedback_On.csv',
+								 '--sta',staOverrideFileName,
+								 '--expID',expID,
+								 '--cid',baselineExpID,
+								 '--spps','true',
+								 '--cpsp','true'))
+	}
+	setwd(aggDamWD)
+	stop('Missing forced runs have been submitted to SLURM. Please restart this script once the forced runs have completed\n')
+} else if(sum(forcedRuns$status=='completed')<nrow(forcedRuns)){
+	setwd(aggDamWD)
+	stop('Forced runs have not completed yet. Please restart this script when all of them have completed\n')
+}
+
+# return to the aggDam working directory
+setwd(aggDamWD)
 
 
 # read STA data ####
@@ -25,11 +88,9 @@ dataForDamFac <- data.frame(id=numeric(),y=numeric(),ylag=numeric(),yfut=numeric
 dataForDamFacSTAs.lst <- list()
 for(STAlevel.i in 1:length(STAs)){
 	cat(sprintf('Processing STA level %f\n',STAs[STAlevel.i]))
-	gdpForThisSTA <- readRDS(file.path('workOutput',
-																		 paste0('N-20000-ChS-100-LCR-1000-IgB-FALSE-FrB-FALSE-KcE-FALSE-Sym-Min-AAZ-FALSE-CFB-TRUE-Pol-policy_EMB-CTO-',STAs[STAlevel.i]),
+	gdpForThisSTA <- readRDS(file.path(location.fridaUncertaintyWD,'workOutput',forcedRuns$expID[STAlevel.i],
 																		 'detectedParmSpace','PerVarFiles-RDS','gdp_real_gdp_in_2021c.RDS'))
-	# loglikeForThisSTA <- readRDS(file.path('workOutput',
-	# 																			 paste0('N-20000-ChS-100-LCR-1000-IgB-FALSE-FrB-FALSE-KcE-FALSE-Sym-Min-AAZ-FALSE-CFB-TRUE-Pol-policy_EMB-CTO-',STAs[STAlevel.i]),
+	# loglikeForThisSTA <- readRDS(file.path(location.fridaUncertaintyWD,'workOutput',forcedRuns$expID[STAlevel.i],
 	# 																			 'detectedParmSpace','PerVarFiles-RDS','logLike.RDS'))
 	
 	# NA out any incomplete entry but do not remove the rows, so that the indexing is not broken
