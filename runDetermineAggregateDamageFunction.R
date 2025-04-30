@@ -75,7 +75,7 @@ if(sum(forcedRuns$status=='not present')>0){
 								 '--sta',staOverrideFileName,
 								 '-s',expIDpreString,
 								 '--cid',baselineExpID,
-								 '--spps','true',
+								 '--cpps','true',
 								 '--cpsp','true'))
 	}
 	setwd(aggDamWD)
