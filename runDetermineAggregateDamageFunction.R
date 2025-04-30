@@ -34,8 +34,9 @@ if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',baselineExpID
 	setwd(aggDamWD)
 	stop('Baseline run has been submitted to SLURM, please restart this script once the baseline run has completed\n')
 }
-if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',baselineExpID,'status'))||
-	 !readChar('test',file.info('test')$size-1)=='completed'){
+statusFile <- file.path(location.fridaUncertaintyWD,'workOutput',baselineExpID,'status')
+if(!file.exists(statusFile)||
+	 !readChar(statusFile,file.info(statusFile)$size-1)=='completed'){
 	setwd(aggDamWD)
 	stop('Baseline run has not completed yet. Run this script again once it has completed.\n')
 }
@@ -51,9 +52,10 @@ for(STA.i in 1:length(STAs)){
 	forcedRuns$staOverrideFileName[STA.i] <- staOverrideFileName
 	expID <- paste0(expIDpreString,'_Baseline-S',numSample,'-policy_EMB-ClimateFeedback_On-',tools::file_path_sans_ext(staOverrideFileName))
 	forcedRuns$expID[STA.i] <- expID
-	if(!file.exists(file.path(location.fridaUncertaintyWD,'workOutput',expID))){
+	statusFile <- file.path(location.fridaUncertaintyWD,'workOutput',expID)
+	if(!file.exists(statusFile)){
 		forcedRuns$status[STA.i] <- 'not present'
-	} else if (readChar('test',file.info('test')$size-1)=='completed'){
+	} else if (readChar(statusFile,file.info(statusFile)$size-1)=='completed'){
 		forcedRuns$status[STA.i] <- 'completed'
 	} else {
 		forcedRuns$status[STA.i] <- 'presumed running'
