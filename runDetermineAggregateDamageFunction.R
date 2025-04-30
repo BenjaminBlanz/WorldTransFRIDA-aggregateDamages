@@ -46,6 +46,7 @@ if(!file.exists(statusFile)||
 forcedRunsExpIDpreSring <- ''
 forcedRuns <- data.frame(STA=STAs,expID=NA,staOverrideFileName=NA,status=NA)
 for(STA.i in 1:length(STAs)){
+	STA <- STAs[STA.i]
 	staOverrideFileName <- writeSTAForcing(
 		outputLocation=file.path(location.fridaUncertaintyWD,'FRIDA-configs'),
 		STAOverride=STA)
