@@ -39,6 +39,8 @@ if(!file.exists(statusFile)||
 	 !readChar(statusFile,file.info(statusFile)$size-1)=='completed'){
 	setwd(aggDamWD)
 	stop('Baseline run has not completed yet. Run this script again once it has completed.\n')
+} else {
+	cat('Baseline completed continuing\n')
 }
 
 # forced STA runs ####
@@ -82,6 +84,8 @@ if(sum(forcedRuns$status=='not present')>0){
 } else if(sum(forcedRuns$status=='completed')<nrow(forcedRuns)){
 	setwd(aggDamWD)
 	stop('Forced runs have not completed yet. Please restart this script when all of them have completed\n')
+} else {
+	cat('Forced runs completed continuing\n')
 }
 
 # return to the aggDam working directory
