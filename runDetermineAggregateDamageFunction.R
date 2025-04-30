@@ -68,7 +68,6 @@ if(sum(forcedRuns$status=='not present')>0){
 	for(STA.i in which(forcedRuns$status=='not present')){
 		staOverrideFileName <- forcedRuns$staOverrideFileName[STA.i]
 		expID <- forcedRuns$expID[STA.i]
-		expIDs$expID[STA.i] <- expID
 		system(paste('./submit_UncertaintyAnalysisLevante.sh',
 								 '-n',numSample,
 								 '--pol','policy_EMB.csv',
