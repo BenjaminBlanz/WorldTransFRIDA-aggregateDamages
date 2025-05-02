@@ -53,9 +53,9 @@ for(STA.i in 1:length(STAs)){
 		outputLocation=file.path(location.fridaUncertaintyWD,'FRIDA-configs'),
 		STAOverride=STA)
 	forcedRuns$staOverrideFileName[STA.i] <- staOverrideFileName
-	expID <- paste0(expIDpreString,'_Baseline-S',numSample,'-policy_EMB-ClimateFeedback_On-',tools::file_path_sans_ext(staOverrideFileName))
+	expID <- paste0(expIDpreString,'-S',numSample,'-policy_EMB-ClimateFeedback_On-',tools::file_path_sans_ext(staOverrideFileName))
 	forcedRuns$expID[STA.i] <- expID
-	statusFile <- file.path(location.fridaUncertaintyWD,'workOutput',expID)
+	statusFile <- file.path(location.fridaUncertaintyWD,'workOutput',expID,'status')
 	if(!file.exists(statusFile)){
 		forcedRuns$status[STA.i] <- 'not present'
 	} else if (readChar(statusFile,file.info(statusFile)$size-1)=='completed'){
