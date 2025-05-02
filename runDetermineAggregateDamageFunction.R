@@ -193,27 +193,40 @@ cat('plotting...')
 # 
 # legend('topleft',legend=paste0('STA ',STAs,'°'),pch=20,col=STAs+1)
 
+figDir <- file.path('figures','ipccDamages')
+dir.create(figDir,F,T)
 source('myRudiVioPlot.R')
+png(file.path(figDir,paste0(format(Sys.time(), "%Y%m%d-%H%M%S"),'-ipccDamgeFunction.png')),width='960',height='1380')
 plot(0,0,
 		 xlab='STA degC',ylab='Annual percentage loss of GDP',
 		 xlim=c(0, 7),
 		 ylim=c(-10,80),
-		 type='n',yaxs='i')
-grid()	
+		 type='n',yaxs='i',
+		 main='Damages per year per ensemble member')
+grid()
 # points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
 for(STA in STAs){
 	myRudiViolinPlot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,
 					at=STA,col='white',add=T,width=0.3,border='black',lwd=3,
 					equiprobspacing = T,n=100)
 	boxplot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,at=STA,col='white',add=T,boxwex=0.4,axes=F,range = 0,border='black',lwd=2)
-	myRudiViolinPlot(as.vector(dataForDamFacAgg[[paste('STA',STA)]])*100,
-									 at=STA,col=NA,border.col = 'gray',add=T,width=0.3,lwd=2,
-									 equiprobspacing = T,n=100)
-	boxplot(dataForDamFacAgg[[paste('STA',STA)]]*100,at=STA,col='white',border='gray',add=T,boxwex=0.15,axes=F,range = 0,lwd=2)
 }
-figDir <- file.path('figures','ipccDamages')
-dir.create(figDir,F,T)
-dev.copy(png,file.path(figDir,'ipccDamgeFunction'),width='960',height='1380')
+dev.off()
+png(file.path(figDir,paste0(format(Sys.time(), "%Y%m%d-%H%M%S"),'-ipccDamgeFunction-meanPerEnsembleMember.png')),width='960',height='1380')
+plot(0,0,
+		 xlab='STA degC',ylab='Annual percentage loss of GDP',
+		 xlim=c(0, 7),
+		 ylim=c(-10,80),
+		 type='n',yaxs='i',
+		 main='Mean yearly damages per ensemble member')
+grid()	
+# points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
+for(STA in STAs){
+	myRudiViolinPlot(as.vector(dataForDamFacAgg[[paste('STA',STA)]])*100,
+									 at=STA,col=NA,border.col = 'black',add=T,width=0.3,lwd=2,
+									 equiprobspacing = T,n=100)
+	boxplot(dataForDamFacAgg[[paste('STA',STA)]]*100,at=STA,col='white',border='black',add=T,boxwex=0.15,axes=F,range = 0,lwd=2)
+}
 dev.off()
 
 cat('done\n')
