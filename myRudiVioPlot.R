@@ -1,4 +1,4 @@
-library(spatstat)
+suppressPackageStartupMessages(library(spatstat,quietly = T))
 # rudimentary violinplot
 # x the data to be plotted
 # w the weights of the data
