@@ -1,10 +1,10 @@
 # a file that has time in the rows and fixed temperatures in columns
 y <- read.csv('realGDP.csv',row.names = 1)
-# the lagged value of gdp
+# the lagged value of gdp (used to calculate what gdp would have been in 0deg world)
 ylag <- y
 ylag[2:nrow(ylag),]<- y[1:(nrow(y)-1),]
 ylag[1,] <- NA
-# the value of gdp one step ahead
+# the value of gdp one step ahead (used to calculate gdp growth)
 yfut <- y
 yfut[1:(nrow(y)-1),] <- y[2:nrow(y),]
 yfut[nrow(y),] <- NA
@@ -14,6 +14,7 @@ dat <- data.frame(y=unname(unlist(y)),ylag=unname(unlist(ylag)),yfut=unname(unli
 # gdp growth is future value - current
 dat$ygro <- dat$yfut - dat$y
 plot(dat$y,dat$ygro,col=dat$STA+1,pch=20)
+legend('topright',legend=paste('STA',unique(dat$STA)),pch=20,col=unique(dat$STA)+1)
 
 # linear model explaining GDP growth by current gdp, but using only data from STA==0
 groMod0 <- lm(ygro~y,data=dat[dat$STA==0,])
@@ -30,7 +31,7 @@ legend('topleft',legend=c('FRIDA 0 deg','Fit'),col=c('black','red'),pch=20)
 
 
 # loss from climate is difference between predicted (if STA were 0) - actual gdp
-dat$yloss <- dat$predy -dat$y
+dat$yloss <- dat$predy - dat$y
 # as relative
 dat$yRelLoss <- dat$yloss/dat$predy
 yRelLoss <- matrix(dat$yRelLoss,ncol=ncol(y))
