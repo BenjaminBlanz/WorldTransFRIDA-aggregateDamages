@@ -1,5 +1,6 @@
 aggDamWD <- getwd()
 source('config-DetermineAggregateDamageFunction.R')
+configStr <- paste0('S-',numSample,'-nSTAs-',length(STAs),'-nTW-',length(timeWindows),'-',paste0(format(Sys.time(), "%Y%m%d-%H%M%S")))
 
 # function that writes the ClimateSTAOverride.csv file for use in 
 # FRIDAforUncertaintyAnalysis
@@ -139,7 +140,6 @@ library(parallel)
 cl <- makePSOCKcluster(detectCores())
 clusterExport(cl,'dataForSyntheticCounterfactual')
 parRes <- parLapply(cl,unique(id),parSynthPredGDP)
-stopCluster(cl)
 cat('done\n')
 
 # losses ####
@@ -163,70 +163,93 @@ dataForDamFac$predy <- dataForDamFac$ylag+
 dataForDamFac$yloss <- dataForDamFac$predy - dataForDamFac$y
 # as relative
 dataForDamFac$yRelLoss <- dataForDamFac$yloss/dataForDamFac$predy
-# mean losses per ensemble member
-dataForDamFacAgg <- matrix(NA,nrow=numIDs,ncol=1+length(STAs))
-colnames(dataForDamFacAgg) <- c('id',paste('STA',STAs))
-dataForDamFacAgg <- as.data.frame(dataForDamFacAgg)
-dataForDamFacAgg$id <- unique(id)
+
+# save ####
+cat('writing dataForDamFac...')
+dir.create('outputData',F,T)
+saveRDS(dataForDamFac,file = file.path('outputData',paste0('dataForDamFac',configStr,'.RDS')))
+cat('done\n')
+
+# agg losses ####
+cat('cacluating aggregate damFac data...\n')
+dataForDamFacTemplate <- matrix(NA,nrow=numIDs,ncol=1+length(STAs))
+colnames(dataForDamFacTemplate) <- c('id',paste('STA',STAs))
+dataForDamFacTemplate <- as.data.frame(dataForDamFacTemplate)
+dataForDamFacTemplate$id <- unique(id)
+dataForDamFacAgg <- list()
+cat('  starting cluster...')
+getFreeMemoryKB <- function() {
+	osName <- Sys.info()[["sysname"]]
+	if (osName == "Windows") {
+		x <- system2("wmic", args =  "OS get FreePhysicalMemory /Value", stdout = TRUE)
+		x <- x[grepl("FreePhysicalMemory", x)]
+		x <- gsub("FreePhysicalMemory=", "", x, fixed = TRUE)
+		x <- gsub("\r", "", x, fixed = TRUE)
+		return(as.integer(x))
+	} else if (osName == 'Linux') {
+		x <- system2('free', args='-k', stdout=TRUE)
+		x <- strsplit(x[2], " +")[[1]][4]
+		return(as.integer(x))
+	} else {
+		stop("Only supported on Windows and Linux")
+	}
+}
+cl <- makePSOCKcluster(min(length(STAs),
+													 detectCores(),
+													 max(1,
+													 		unname(floor(getFreeMemoryKB()/(ps::ps_memory_info()[1]/1024)))
+													 		)
+													 )
+											 )
+cat('done\n  workers reading dataForDamFac...')
+gobble <- clusterCall(cl,function(){
+	dataForDamFac <<- readRDS(file.path('outputData',paste0('dataForDamFac',configStr,'.RDS')))
+	return()})
+gobble <- clusterEvalQ(cl,source('config-DetermineAggregateDamageFunction.R'))
+cat('done\n  calculating per STA...')
+parDamAggPerSTA <- function(STAlevel.i){
+	dataForThisSTA <- dataForDamFac[dataForDamFac$STA==STAs[STAlevel.i],c('id','yRelLoss')]
+	retlist <- list()
+	retlist$Mean <- tapply(dataForThisSTA$yRelLoss,dataForThisSTA$id,mean,na.rm=T)
+	retlist$Median <- tapply(dataForThisSTA$yRelLoss,dataForThisSTA$id,median,na.rm=T)
+	return(retlist)
+}
+parRes <- parLapply(cl,1:length(STAs),parDamAggPerSTA)
+dataForDamFacAgg$Mean <- dataForDamFacTemplate
+dataForDamFacAgg$Median <- dataForDamFacTemplate
 for(STAlevel.i in 1:length(STAs)){
-	dataForThisSTA <- dataForDamFac[dataForDamFac$STA==STAs[STAlevel.i]&!is.na(dataForDamFac$yRelLoss),c('id','yRelLoss')]
-	dataForDamFacAgg[,STAlevel.i+1] <- tapply(dataForThisSTA$yRelLoss,dataForThisSTA$id,mean,na.rm=T)
+	dataForDamFacAgg$Mean[,STAlevel.i+1] <- parRes[[STAlevel.i]]$Mean
+	dataForDamFacAgg$Median[,STAlevel.i+1] <- parRes[[STAlevel.i]]$Median
 }
+cat('done\n  calculating per TW and STA')
+dataForDamFacAgg$timewindow <- list()
+parDamAggPerSTAandTW <- function(STAlevel.i,tw.i){
+	dataForThisSTAandTW <- dataForDamFac[dataForDamFac$year>=timeWindows[[tw.i]][1] &
+																			 	dataForDamFac$year<=timeWindows[[tw.i]][2] &
+																			 	dataForDamFac$STA==STAs[STAlevel.i],
+																			 c('id','yRelLoss')]
+	retlist <- list()
+	retlist$Mean <- tapply(dataForThisSTAandTW$yRelLoss,dataForThisSTAandTW$id,mean,na.rm=T)
+	retlist$Median <- tapply(dataForThisSTAandTW$yRelLoss,dataForThisSTAandTW$id,median,na.rm=T)
+	return(retlist)
+}
+for(tw.i in 1:length(timeWindows)){
+	cat('.')
+	dataForDamFacAgg$timewindow[[tw.i]] <- list()
+	dataForDamFacAgg$timewindow[[tw.i]][['startYear']] <- timeWindows[[tw.i]][1]
+	dataForDamFacAgg$timewindow[[tw.i]][['endYear']] <- timeWindows[[tw.i]][2]
+	dataForDamFacAgg$timewindow[[tw.i]][['Mean']] <- dataForDamFacTemplate
+	dataForDamFacAgg$timewindow[[tw.i]][['Median']] <- dataForDamFacTemplate
+	parRes <- parLapply(cl,1:length(STAs),parDamAggPerSTAandTW,tw.i=tw.i)
+	for(STAlevel.i in 1:length(STAs)){
+		dataForDamFacAgg$timewindow[[tw.i]][['Mean']][,STAlevel.i+1] <- parRes[[STAlevel.i]]$Mean
+		dataForDamFacAgg$timewindow[[tw.i]][['Median']][,STAlevel.i+1] <- parRes[[STAlevel.i]]$Median
+	}
+}
+cat('done\n  stopping cluster...')
+stopCluster(cl)
+cat('done\n')
+cat('saving dataForDamFacAgg...')
+saveRDS(dataForDamFacAgg,file = file.path('outputData',paste0('dataForDamFacAgg',configStr,'.RDS')))
 cat('done\n')
 
-# plots ####
-cat('plotting...')
-# 
-# plot(0,0,type='n',
-# 		 ylim=c(-4e4,1.5e5),xlim=c(0,4e6),
-# 		 xlab='real GDP',ylab='real GDP growth')
-# grid()
-# for(STAlevel.i in 1:length(STAs)){
-# 	# sampleIdc <- sample(1:nrow(dataForDamFacSTAs.lst[[STAlevel.i]]),
-# 	# 													 min(nrow(dataForDamFacSTAs.lst[[STAlevel.i]]), 4000))
-# 	sampleIdc <- seq(1,nrow(dataForDamFacSTAs.lst[[STAlevel.i]]),1e3)
-# 	points(dataForDamFacSTAs.lst[[STAlevel.i]]$y[sampleIdc],
-# 				 dataForDamFacSTAs.lst[[STAlevel.i]]$ygro[sampleIdc],col=adjustcolor(STAs[STAlevel.i]+1,alpha.f=0.2),
-# 				 pch=20)
-# }
-# points(dataForSyntheticCounterfactual$y,dataForSyntheticCounterfactual$ygro,pch=20,col='red')
-# 
-# legend('topleft',legend=paste0('STA ',STAs,'°'),pch=20,col=STAs+1)
-
-figDir <- file.path('figures','ipccDamages')
-dir.create(figDir,F,T)
-source('myRudiVioPlot.R')
-png(file.path(figDir,paste0(format(Sys.time(), "%Y%m%d-%H%M%S"),'-ipccDamgeFunction.png')),width='960',height='1380')
-plot(0,0,
-		 xlab='STA degC',ylab='Annual percentage loss of GDP',
-		 xlim=c(0, 7),
-		 ylim=c(-10,80),
-		 type='n',yaxs='i',
-		 main='Damages per year per ensemble member')
-grid()
-# points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
-for(STA in STAs){
-	myRudiViolinPlot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,
-					at=STA,col='white',add=T,width=0.3,border='black',lwd=3,
-					equiprobspacing = T,n=100)
-	boxplot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,at=STA,col='white',add=T,boxwex=0.4,axes=F,range = 0,border='black',lwd=2)
-}
-dev.off()
-png(file.path(figDir,paste0(format(Sys.time(), "%Y%m%d-%H%M%S"),'-ipccDamgeFunction-meanPerEnsembleMember.png')),width='960',height='1380')
-plot(0,0,
-		 xlab='STA degC',ylab='Annual percentage loss of GDP',
-		 xlim=c(0, 7),
-		 ylim=c(-10,80),
-		 type='n',yaxs='i',
-		 main='Mean yearly damages per ensemble member')
-grid()	
-# points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
-for(STA in STAs){
-	myRudiViolinPlot(as.vector(dataForDamFacAgg[[paste('STA',STA)]])*100,
-									 at=STA,col=NA,border.col = 'black',add=T,width=0.3,lwd=2,
-									 equiprobspacing = T,n=100)
-	boxplot(dataForDamFacAgg[[paste('STA',STA)]]*100,at=STA,col='white',border='black',add=T,boxwex=0.15,axes=F,range = 0,lwd=2)
-}
-dev.off()
-
-cat('done\n')
