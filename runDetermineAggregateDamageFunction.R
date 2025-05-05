@@ -167,7 +167,7 @@ dataForDamFac$yRelLoss <- dataForDamFac$yloss/dataForDamFac$predy
 # save ####
 cat('writing dataForDamFac...')
 dir.create('outputData',F,T)
-saveRDS(dataForDamFac,file = file.path('outputData',paste0('dataForDamFac',configStr,'.RDS')))
+saveRDS(dataForDamFac,file = file.path('outputData',paste0('dataForDamFac-',configStr,'.RDS')))
 cat('done\n')
 
 # agg losses ####
@@ -203,7 +203,7 @@ cl <- makePSOCKcluster(min(length(STAs),
 											 )
 cat('done\n  workers reading dataForDamFac...')
 gobble <- clusterCall(cl,function(){
-	dataForDamFac <<- readRDS(file.path('outputData',paste0('dataForDamFac',configStr,'.RDS')))
+	dataForDamFac <<- readRDS(file.path('outputData',paste0('dataForDamFac-',configStr,'.RDS')))
 	return()})
 gobble <- clusterEvalQ(cl,source('config-DetermineAggregateDamageFunction.R'))
 cat('done\n  calculating per STA...')
@@ -250,6 +250,6 @@ cat('done\n  stopping cluster...')
 stopCluster(cl)
 cat('done\n')
 cat('saving dataForDamFacAgg...')
-saveRDS(dataForDamFacAgg,file = file.path('outputData',paste0('dataForDamFacAgg',configStr,'.RDS')))
+saveRDS(dataForDamFacAgg,file = file.path('outputData',paste0('dataForDamFacAgg-',configStr,'.RDS')))
 cat('done\n')
 
