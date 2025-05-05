@@ -1,6 +1,11 @@
 source('config-DetermineAggregateDamageFunction.R')
-dataForDamFac <- readRDS(file.path('outputData',paste0('dataForDamFac',configStr,'.RDS')))
-dataForDamFacAgg <- readRDS(file.path('outputData',paste0('dataForDamFacAgg',configStr,'.RDS')))
+configStr <- paste0('S-',numSample,'-nSTAs-',length(STAs),'-nTW-',length(timeWindows),'-',identifier)
+if(!exists('dataForDamFac')){
+	dataForDamFac <- readRDS(file.path('outputData',paste0('dataForDamFac-',configStr,'.RDS')))
+}
+if(!exists('dataForDamFacAgg')){
+	dataForDamFacAgg <- readRDS(file.path('outputData',paste0('dataForDamFacAgg-',configStr,'.RDS')))
+}
 
 # plots ####
 cat('plotting...')
@@ -21,10 +26,7 @@ cat('plotting...')
 # 
 # legend('topleft',legend=paste0('STA ',STAs,'°'),pch=20,col=STAs+1)
 
-vioplot.area <- 0.5
-boxplot.boxwex <- 0.1
-
-figDir <- file.path('figures','ipccDamages')
+figDir <- file.path('figures','ipccDamages',configStr)
 dir.create(figDir,F,T)
 source('myRudiVioPlot.R')
 png(file.path(figDir,paste0(format(Sys.time(), "%Y%m%d-%H%M%S"),'-ipccDamgeFunction.png')),width='960',height='1380')

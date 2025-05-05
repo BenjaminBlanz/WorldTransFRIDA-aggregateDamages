@@ -1,6 +1,6 @@
 aggDamWD <- getwd()
 source('config-DetermineAggregateDamageFunction.R')
-configStr <- paste0('S-',numSample,'-nSTAs-',length(STAs),'-nTW-',length(timeWindows),'-',paste0(format(Sys.time(), "%Y%m%d-%H%M%S")))
+configStr <- paste0('S-',numSample,'-nSTAs-',length(STAs),'-nTW-',length(timeWindows),'-',identifier)
 
 # function that writes the ClimateSTAOverride.csv file for use in 
 # FRIDAforUncertaintyAnalysis

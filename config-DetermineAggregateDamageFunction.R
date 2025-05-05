@@ -23,3 +23,10 @@ timeWindows[[9]] <- c(2011,2070)
 timeWindows[[10]] <- c(2011,2080)
 timeWindows[[11]] <- c(2011,2090)
 timeWindows[[12]] <- c(2011,2100)
+
+# identifier for this config
+identifier <- 'default'
+
+# plot properties
+vioplot.area <- 0.5
+boxplot.boxwex <- 0.1
