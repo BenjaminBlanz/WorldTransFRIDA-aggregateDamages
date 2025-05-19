@@ -29,7 +29,7 @@ cat('plotting...')
 figDir <- file.path('figures','ipccDamages',configStr)
 dir.create(figDir,F,T)
 source('myRudiVioPlot.R')
-png(file.path(figDir,paste0(format(Sys.time(), "%Y%m%d-%H%M%S"),'-ipccDamgeFunction.png')),width='960',height='1380')
+png(file.path(figDir,'ipccDamgeFunction.png'),width='960',height='1380')
 plot(0,0,
 		 xlab='STA degC',ylab='Annual percentage loss of GDP',
 		 xlim=c(0, 7),
@@ -45,7 +45,7 @@ for(STA in STAs){
 	boxplot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,at=STA,col='white',add=T,boxwex=boxplot.boxwex,axes=F,range = 0,border='black',lwd=2)
 }
 dev.off()
-png(file.path(figDir,paste0(format(Sys.time(), "%Y%m%d-%H%M%S"),'-ipccDamgeFunction-boxplot.png')),width='960',height='1380')
+png(file.path(figDir,'ipccDamgeFunction-boxplot.png'),width='960',height='1380')
 plot(0,0,
 		 xlab='STA degC',ylab='Annual percentage loss of GDP',
 		 xlim=c(0, 7),
@@ -58,7 +58,7 @@ for(STA in STAs){
 	boxplot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,at=STA,col='white',add=T,boxwex=boxplot.boxwex,axes=F,range = 0,border='black',lwd=2)
 }
 dev.off()
-png(file.path(figDir,paste0(format(Sys.time(), "%Y%m%d-%H%M%S"),'-ipccDamgeFunction-vioplot.png')),width='960',height='1380')
+png(file.path(figDir,'ipccDamgeFunction-vioplot.png'),width='960',height='1380')
 plot(0,0,
 		 xlab='STA degC',ylab='Annual percentage loss of GDP',
 		 xlim=c(0, 7),
@@ -73,7 +73,7 @@ for(STA in STAs){
 									 equiprobspacing = T,n=100)
 }
 dev.off()
-png(file.path(figDir,paste0(format(Sys.time(), "%Y%m%d-%H%M%S"),'-ipccDamgeFunction-meanPerEnsembleMember.png')),width='960',height='1380')
+png(file.path(figDir,'ipccDamgeFunction-meanPerEnsembleMember.png'),width='960',height='1380')
 plot(0,0,
 		 xlab='STA degC',ylab='Annual percentage loss of GDP',
 		 xlim=c(0, 7),
@@ -89,7 +89,7 @@ for(STA in STAs){
 	boxplot(dataForDamFacAgg[[paste('STA',STA)]]*100,at=STA,col='white',border='black',add=T,boxwex=boxplot.boxwex,axes=F,range = 0,lwd=2)
 }
 dev.off()
-png(file.path(figDir,paste0(format(Sys.time(), "%Y%m%d-%H%M%S"),'-ipccDamgeFunction-meanPerEnsembleMember-boxplot.png')),width='960',height='1380')
+png(file.path(figDir,'ipccDamgeFunction-meanPerEnsembleMember-boxplot.png'),width='960',height='1380')
 plot(0,0,
 		 xlab='STA degC',ylab='Annual percentage loss of GDP',
 		 xlim=c(0, 7),
@@ -103,7 +103,7 @@ for(STA in STAs){
 }
 dev.off()
 
-png(file.path(figDir,paste0(format(Sys.time(), "%Y%m%d-%H%M%S"),'-ipccDamgeFunction-meanPerEnsembleMember-vioplot.png')),width='960',height='1380')
+png(file.path(figDir,'ipccDamgeFunction-meanPerEnsembleMember-vioplot.png'),width='960',height='1380')
 plot(0,0,
 		 xlab='STA degC',ylab='Annual percentage loss of GDP',
 		 xlim=c(0, 7),
