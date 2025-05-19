@@ -29,125 +29,125 @@ if(!exists('dataForDamFacAgg')){
 # 
 # legend('topleft',legend=paste0('STA ',STAs,'°'),pch=20,col=STAs+1)
 
+
 figDir <- file.path('figures','ipccDamages',configStr)
 dir.create(figDir,F,T)
 source('myRudiVioPlot.R')
-cat('Plotting Damages per year per ensemble member')
-png(file.path(figDir,'ipccDamgeFunction.png'),width='960',height='1380')
-plot(0,0,
-		 xlab='STA degC',ylab='Annual percentage loss of GDP',
-		 xlim=c(0, 7),
-		 ylim=c(-10,80),
-		 type='n',yaxs='i',
-		 main='Damages per year per ensemble member')
-cat('.')
-grid()
-cat('.')
-# points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
-for(STA in STAs){
-	myRudiViolinPlot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,
-									 at=STA,col='white',add=T,area=vioplot.area,border='black',lwd=3,
-									 equiprobspacing = T,n=100)
-	boxplot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,at=STA,col='white',add=T,boxwex=boxplot.boxwex,axes=F,range = 0,border='black',lwd=2)
-	cat('.')
+plotTypes <- list()
+plotTypes[['boxplotVioplot']] <- c('boxplot','vioplot')
+plotTypes[['boxplot']] <- c('boxplot')
+plotTypes[['vioplot']] <- c('vioplot')
+timeWindows[[length(timeWindows)+1]] <- 'all'
+
+# per year per member ####
+for(tw.i in 1:length(timeWindows)){
+	for(pt.i  in 1:length(plotTypes)){
+		cat(sprintf('Plotting per year per ensemble member for time window %s %s',
+								paste(timeWindows[[tw.i]],collapse = '-'),
+								paste(plotTypes[[pt.i]],collapse=' and ')))
+		png(file.path(figDir,sprintf('ipccDamgeFunction-PerYearPerEnsembleMember-%s-%s.png',
+																 paste(plotTypes[[pt.i]],collapse='-'),
+																 paste(timeWindows[[tw.i]],collapse = '-'))),width='960',height='1380')
+		plot(0,0,
+				 xlab='STA degC',ylab='Annual percentage loss of GDP',
+				 xlim=c(0, 7),
+				 ylim=c(-10,80),
+				 type='n',yaxs='i',
+				 main=sprintf('Per year damages per ensemble member years %s',paste(timeWindows[[tw.i]],collapse = '-')))
+		cat('.')
+		grid()	
+		cat('.')
+		# points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
+		for(STA in STAs){
+			if(length(timeWindows[[tw.i]])==1 && timeWindows[[tw.i]]=='all'){
+				if('vioplot' %in% plotTypes[[pt.i]]){
+					myRudiViolinPlot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,
+													 at=STA,col='white',add=T,area=vioplot.area,border='black',lwd=3,
+													 equiprobspacing = T,n=100)
+					cat('.')
+				}
+				if('boxplot' %in% plotTypes[[pt.i]]){
+					boxplot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,
+									at=STA,col='white',add=T,boxwex=boxplot.boxwex,axes=F,range = 0,border='black',lwd=2)
+					cat('.')
+				}
+			} else {
+				if('vioplot' %in% plotTypes[[pt.i]]){
+					myRudiViolinPlot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA & 
+																										dataForDamFac$year>=timeWindows[[tw.i]][1] &
+																										dataForDamFac$year<=timeWindows[[tw.i]][2]]*100,
+													 at=STA,col='white',add=T,area=vioplot.area,border='black',lwd=3,
+													 equiprobspacing = T,n=100)
+					cat('.')
+				}
+				if('boxplot' %in% plotTypes[[pt.i]]){
+					boxplot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA & 
+																				 	dataForDamFac$year>=timeWindows[[tw.i]][1] &
+																				 	dataForDamFac$year<=timeWindows[[tw.i]][2]]*100,
+									at=STA,col='white',add=T,boxwex=boxplot.boxwex,axes=F,range = 0,border='black',lwd=2)
+					cat('.')
+				}
+			}
+		}
+		dev.off()
+		cat('done\n')
+	}
 }
-dev.off()
-cat('done\n')
-cat('Plotting Damages per year per ensemble member boxplots only')
-png(file.path(figDir,'ipccDamgeFunction-boxplot.png'),width='960',height='1380')
-plot(0,0,
-		 xlab='STA degC',ylab='Annual percentage loss of GDP',
-		 xlim=c(0, 7),
-		 ylim=c(-10,80),
-		 type='n',yaxs='i',
-		 main='Damages per year per ensemble member')
-cat('.')
-grid()
-cat('.')
-# points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
-for(STA in STAs){
-	boxplot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,at=STA,col='white',add=T,boxwex=boxplot.boxwex,axes=F,range = 0,border='black',lwd=2)
-	cat('.')
+
+# per ensemble member measures ####
+measures <- c('Mean','Median')
+for(tw.i in 1:length(timeWindows)){
+	for(measure in measures){
+		for(pt.i  in 1:length(plotTypes)){
+			if(measure %in% names(dataForDamFacAgg)){
+				cat(sprintf('Plotting %s yearly per ensemble member for time window %s %s',
+										measure,
+										paste(timeWindows[[tw.i]],collapse = '-'),
+										paste(plotTypes[[pt.i]],collapse=' and ')))
+				png(file.path(figDir,sprintf('ipccDamgeFunction-%sPerEnsembleMember-%s-%s.png',
+																		 measure,
+																		 paste(plotTypes[[pt.i]],collapse='-'),
+																		 paste(timeWindows[[tw.i]],collapse = '-'))),width='960',height='1380')
+				plot(0,0,
+						 xlab='STA degC',ylab='Annual percentage loss of GDP',
+						 xlim=c(0, 7),
+						 ylim=c(-10,80),
+						 type='n',yaxs='i',
+						 main=sprintf('%s yearly damages per ensemble member years %s',measure,paste(timeWindows[[tw.i]],collapse = '-')))
+				cat('.')
+				grid()	
+				cat('.')
+				# points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
+				for(STA in STAs){
+					if(length(timeWindows[[tw.i]])==1 && timeWindows[[tw.i]]=='all'){
+						if('vioplot' %in% plotTypes[[pt.i]]){
+							myRudiViolinPlot(as.vector(dataForDamFacAgg[[measure]][[paste('STA',STA)]])*100,
+															 at=STA,col=NA,border.col = 'black',add=T,area=vioplot.area,lwd=2,
+															 equiprobspacing = T,n=100)
+							cat('.')
+						}
+						if('boxplot' %in% plotTypes[[pt.i]]){
+							boxplot(dataForDamFacAgg[[measure]][[paste('STA',STA)]]*100,
+											at=STA,col='white',border='black',add=T,boxwex=boxplot.boxwex,axes=F,range = 0,lwd=2)
+							cat('.')
+						}
+					} else {
+						if('vioplot' %in% plotTypes[[pt.i]]){
+							myRudiViolinPlot(as.vector(dataForDamFacAgg$timewindow[[tw.i]][[measure]][[paste('STA',STA)]])*100,
+															 at=STA,col=NA,border.col = 'black',add=T,area=vioplot.area,lwd=2,
+															 equiprobspacing = T,n=100)
+							cat('.')
+						}
+						if('boxplot' %in% plotTypes[[pt.i]]){
+							boxplot(dataForDamFacAgg$timewindow[[tw.i]][[measure]][[paste('STA',STA)]]*100,
+											at=STA,col='white',border='black',add=T,boxwex=boxplot.boxwex,axes=F,range = 0,lwd=2)
+							cat('.')
+						}
+					}
+				}
+				dev.off()
+				cat('done\n')
+			}
+		}
+	}
 }
-dev.off()
-cat('done\n')
-cat('Plotting Damages per year per ensemble member violins only')
-png(file.path(figDir,'ipccDamgeFunction-vioplot.png'),width='960',height='1380')
-plot(0,0,
-		 xlab='STA degC',ylab='Annual percentage loss of GDP',
-		 xlim=c(0, 7),
-		 ylim=c(-10,80),
-		 type='n',yaxs='i',
-		 main='Damages per year per ensemble member')
-cat('.')
-grid()
-cat('.')
-# points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
-for(STA in STAs){
-	myRudiViolinPlot(dataForDamFac$yRelLoss[dataForDamFac$STA==STA]*100,
-									 at=STA,col='white',add=T,area=vioplot.area,border='black',lwd=3,
-									 equiprobspacing = T,n=100)
-	cat('.')
-}
-dev.off()
-cat('done\n')
-cat('Plotting Mean yearly per ensemble member')
-png(file.path(figDir,'ipccDamgeFunction-meanPerEnsembleMember.png'),width='960',height='1380')
-plot(0,0,
-		 xlab='STA degC',ylab='Annual percentage loss of GDP',
-		 xlim=c(0, 7),
-		 ylim=c(-10,80),
-		 type='n',yaxs='i',
-		 main='Mean yearly damages per ensemble member')
-cat('.')
-grid()	
-cat('.')
-# points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
-for(STA in STAs){
-	myRudiViolinPlot(as.vector(dataForDamFacAgg[[paste('STA',STA)]])*100,
-									 at=STA,col=NA,border.col = 'black',add=T,area=vioplot.area,lwd=2,
-									 equiprobspacing = T,n=100)
-	cat('.')
-	boxplot(dataForDamFacAgg[[paste('STA',STA)]]*100,at=STA,col='white',border='black',add=T,boxwex=boxplot.boxwex,axes=F,range = 0,lwd=2)
-	cat('.')
-}
-dev.off()
-cat('done\n')
-cat('Plotting Mean yearly per ensemble member boxplots only')
-png(file.path(figDir,'ipccDamgeFunction-meanPerEnsembleMember-boxplot.png'),width='960',height='1380')
-plot(0,0,
-		 xlab='STA degC',ylab='Annual percentage loss of GDP',
-		 xlim=c(0, 7),
-		 ylim=c(-10,80),
-		 type='n',yaxs='i',
-		 main='Mean yearly damages per ensemble member')
-cat('.')
-grid()	
-cat('.')
-# points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
-for(STA in STAs){
-	boxplot(dataForDamFacAgg[[paste('STA',STA)]]*100,at=STA,col='white',border='black',add=T,boxwex=boxplot.boxwex,axes=F,range = 0,lwd=2)
-	cat('.')
-}
-dev.off()
-cat('done\n')
-cat('Plotting Mean yearly per ensemble member violins only')
-png(file.path(figDir,'ipccDamgeFunction-meanPerEnsembleMember-vioplot.png'),width='960',height='1380')
-plot(0,0,
-		 xlab='STA degC',ylab='Annual percentage loss of GDP',
-		 xlim=c(0, 7),
-		 ylim=c(-10,80),
-		 type='n',yaxs='i',
-		 main='Mean yearly damages per ensemble member')
-cat('.')
-grid()	
-cat('.')
-# points(dat$STA,dat$yRelLoss*100,col=1,pch=20)
-for(STA in STAs){
-	myRudiViolinPlot(as.vector(dataForDamFacAgg[[paste('STA',STA)]])*100,
-									 at=STA,col=NA,border.col = 'black',add=T,area=vioplot.area,lwd=2,
-									 equiprobspacing = T,n=100)
-	cat('.')
-}
-dev.off()
-cat('done\n')
