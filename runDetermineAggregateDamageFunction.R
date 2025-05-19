@@ -139,6 +139,7 @@ parSynthPredGDP <- function(i){
 library(parallel)
 cl <- makePSOCKcluster(detectCores())
 clusterExport(cl,'dataForSyntheticCounterfactual')
+clusterExport(cl,'timeWindows')
 parRes <- parLapply(cl,unique(id),parSynthPredGDP)
 stopCluster(cl)
 cat('done\n')
@@ -204,6 +205,7 @@ cl <- makePSOCKcluster(min(length(STAs),
 											 )
 cat('done\n  workers reading dataForDamFac...')
 clusterExport(cl,'configStr')
+clusterExport(cl,'timeWindows')
 gobble <- clusterCall(cl,function(){
 	dataForDamFac <<- readRDS(file.path('outputData',paste0('dataForDamFac-',configStr,'.RDS')))
 	return()})
