@@ -140,6 +140,7 @@ library(parallel)
 cl <- makePSOCKcluster(detectCores())
 clusterExport(cl,'dataForSyntheticCounterfactual')
 parRes <- parLapply(cl,unique(id),parSynthPredGDP)
+stopCluster(cl)
 cat('done\n')
 
 # losses ####
@@ -202,6 +203,7 @@ cl <- makePSOCKcluster(min(length(STAs),
 													 )
 											 )
 cat('done\n  workers reading dataForDamFac...')
+clusterExport(cl,'configStr')
 gobble <- clusterCall(cl,function(){
 	dataForDamFac <<- readRDS(file.path('outputData',paste0('dataForDamFac-',configStr,'.RDS')))
 	return()})
