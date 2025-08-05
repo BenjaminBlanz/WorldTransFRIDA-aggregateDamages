@@ -6,7 +6,7 @@ plh <- 600
 baselineFolder <- file.path('workOutput','determineAggDam_Baseline-S20000-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off',
 														'detectedParmSpace','PerVarFiles-RDS')
 # on levante
-# baselineFolder <- file.path('/work/mh0033/b383346/WorldTransFrida-Uncertainty/workOutput/UA_EMBv6Try2_nS100000')
+# baselineFolder <- file.path('/work/mh0033/b383346/WorldTransFrida-Uncertainty/workOutput/UA_EMBv6Try2_nS100000/detectedParmSpace/PerVarFiles-RDS')
 
 sta <- readRDS(file.path(baselineFolder,'energy_balance_model_surface_temperature_anomaly.RDS'))
 # sta <- sta[complete.cases(sta),] # drop incomplete runs
