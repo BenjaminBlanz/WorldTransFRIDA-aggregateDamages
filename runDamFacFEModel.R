@@ -82,7 +82,7 @@ regDF[,'puinv'] <- unname(unlist(puinv[,-1]))
 regDF <- as.data.frame(regDF)
 regDF <- regDF[complete.cases(regDF),]
 
-rm(list=c('gdp','pdppc','pop','edem','esup','esht','inf','prinv','puinv','sta'))
+rm(list=c('gdp','gpdppc','pop','edem','esup','esht','inf','prinv','puinv','sta'))
 
 # consider drop early years as burn in
 # regDF <- regDF[regDF$year>=2050,]
