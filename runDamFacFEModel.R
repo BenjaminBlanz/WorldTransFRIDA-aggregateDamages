@@ -1,14 +1,13 @@
-my1DPolyFun <- function(x,coefs){
-	y = 0
-	for(i in 1:length(coefs)){
-		y = y + coefs[i] * x^(i-1)
-	}
-	return(y)
-}
+plw <- 600
+plh <- 600
 
 # read data
+# on my machine
 baselineFolder <- file.path('workOutput','determineAggDam_Baseline-S20000-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off',
 														'detectedParmSpace','PerVarFiles-RDS')
+# on levante
+# baselineFolder <- file.path('/work/mh0033/b383346/WorldTransFrida-Uncertainty/workOutput/UA_EMBv6Try2_nS100000')
+
 sta <- readRDS(file.path(baselineFolder,'energy_balance_model_surface_temperature_anomaly.RDS'))
 # sta <- sta[complete.cases(sta),] # drop incomplete runs
 gdp <- readRDS(file.path(baselineFolder,'gdp_real_gdp_in_2021c.RDS'))
@@ -83,40 +82,94 @@ regDF[,'puinv'] <- unname(unlist(puinv[,-1]))
 regDF <- as.data.frame(regDF)
 regDF <- regDF[complete.cases(regDF),]
 
+rm(list=c('gdp','pdppc','pop','edem','esup','esht','inf','prinv','puinv','sta'))
+
+# consider drop early years as burn in
+# regDF <- regDF[regDF$year>=2050,]
+
 nobs <- nrow(regDF)
-
-
-library('datawizard')
-regDF <- demean(regDF,c('gdp','lgdp','rgdp','gdpGro','gdpGroRt'),'id')
 
 # model ####
 # par(pch='.')
 # plot(regDF$year[regDF$id==2],regDF$rgdp_within[regDF$id==2],type='l')
 # plot(regDF$sta,regDF$rgdp_within,ylim=c(-0.1,0.1))
-predDF <- regDF
-predDF$sta <- 0
 ## OLS ####
+degree <- 5
 # regular model
-lMod <- lm(gdp ~ poly(lgdp,sta,degree=5), data=regDF)
+lMod <- lm(gdp ~ poly(lgdp,sta,degree=degree), data=regDF)
+# lMod <- lm(gdp ~ poly(lgdp,sta,degree=degree) + poly(lgdp,pop,esht,inf,prinv,puinv,degree=1), data=regDF)
+
+# 2stage model
+# popMod <- lm(pop ~ poly(sta,degree=degree), data=regDF)
+# regDF$popNoSta <- resid(popMod)
+# eshtMod <- lm(esht ~ poly(sta,degree=degree), data=regDF)
+# regDF$eshtNoSta <- resid(eshtMod)
+# infMod <- lm(inf ~ poly(sta,degree=degree), data=regDF)
+# regDF$infNoSta <- resid(eshtMod)
+# prinvMod <- lm(prinv ~ poly(sta,degree=degree), data=regDF)
+# regDF$prinvNoSta <- resid(prinvMod)
+# puinvMod <- lm(puinv ~ poly(sta,degree=degree), data=regDF)
+# regDF$puinvNoSta <- resid(puinvMod)
+# predDF <- regDF
+# predDF$sta <- 0 
+# lMod <- lm(gdp ~ poly(lgdp,sta,degree=degree) + poly(lgdp,popNoSta,eshtNoSta,infNoSta,prinvNoSta,puinvNoSta,degree=1), data=regDF)
+
 summary(lMod)
+png(file.path('figures','residVsLgdp.png'),width = plw,height = plh)
 par(pch='.')
 plot(regDF$lgdp, resid(lMod),
 		 xlim=c(0,5e6),ylim=c(-2e5,2e5),
 		 main='prediction error')
 abline(h=0,col='red')
+dev.off()
+png(file.path('figures','residVsSta.png'),width = plw,height = plh)
+par(pch='.')
 plot(regDF$sta, resid(lMod),
 		 ylim=c(-2e5,2e5),
 		 main='prediction error')
 abline(h=0,col='red')
+dev.off()
 lModPred <- predict(lMod)
+predDF <- regDF
+predDF$sta <- 0
 lModPred0sta <- predict(lMod, newdata = predDF)
-plot(regDF$lgdp, regDF$gdp, xlim=c(0,2e6), ylim=c(0,2e6))
+png(file.path('figures','gdpVsLgdp.png'),width = plw,height = plh)
+par(pch='.')
+plot(regDF$lgdp, regDF$gdp, xlim=c(0,2e6), ylim=c(0,2e6),
+		 main='gdp depending on gdp_t-1')
 points(regDF$lgdp, lModPred0sta,col='red')
-lModLoss <- lModPred0sta - lModPred#regDF$gdp
-lModLossRel <- lModLoss/lModPred#regDF$gdp
-plot(regDF$sta,lModLossRel,ylim=c(-0.1,0.8),
+legend('topleft',
+			 legend=c('FRIDA EMB','Pred. STA=0'),
+			 col=c('black','red'),
+			 pch=20)
+dev.off()
+lModLoss <- lModPred0sta - regDF$gdp
+lModLossRel <- lModLoss/regDF$gdp
+png(file.path('figures','relGDPloss.png'),width = plw,height = plh)
+par(pch='.')
+plot(regDF$sta,lModLossRel,
+		 xlim=c(0,8),ylim=c(-0.1,0.8),
+		 col=adjustcolor(1,alpha.f = 0.01),
+		 # col=1,
 		 main='year relative GDP loss')
+dev.off()
 
+# model2 ####
+library(optimx)
+predFitM <- function(par,sta){
+	return(par[1] + par[2]*log(sta+par[3])+par[4]*sta)
+}
+fitRMSE <- function(par,sta){
+	return(sqrt(mean((lModLossRel - predFitM(par,sta))^2)))
+}
+par0 <- c(0,0.04,0.5,0)
+fittedPar <- optimx(par0,fitRMSE,method = 'BFGS',sta=regDF$sta)
+par <- unlist(unname(fittedPar[which.min(fittedPar$value),1:length(par0)]))
+staSup <- seq(-par[1],10,length.out=200)
+png(file.path('figures','relGDPlossFunFit.png'),width = plw,height = plh)
+par(pch='.')
+plot(staSup,predFitM(par,staSup),col='red',type='l',ylim=c(-0.1,0.8),lwd=3)
+dev.off()
 
 # FE model
 # discarded as errors are larger than in the corresponding standard model
@@ -125,137 +178,3 @@ plot(regDF$sta,lModLossRel,ylim=c(-0.1,0.8),
 # levels for each groups means that their origins no longer conincide for cases where
 # data have strong trends, such as this.
 # 
-# lMod <- lm(gdp_within ~ poly(lgdp_within,sta,degree=5), data=regDF) 
-# summary(lMod)
-# par(pch='.')
-# plot(regDF$sta,regDF$gdp_within,ylim=c(-1e6,2e6))
-# points(regDF$sta,predict(lMod),col='red')
-# plot(regDF$lgdp_within,regDF$gdp_within - predict(lMod),
-# 		 xlim=c(-1e6,1e6),ylim=c(-1e5,1e5),
-# 		 main='prediction error')
-# 
-# lModPred <- predict(lMod)
-# lModPred0sta <- predict(lMod, newdata = predDF)
-# lModLoss <- lModPred0sta - regDF$gdp_within
-# lModLossRel <- lModLoss/regDF$gdp
-# plot(regDF$sta,lModLoss,ylim=c(0,1e5),
-# 		 main='GDP loss')
-# plot(regDF$sta,lModLossRel,ylim=c(-0.1,0.8),
-# 		 main='Relative GDP loss')
-
-## OLS grRt ####
-lModGrRt <- lm(gdpGroRt_within ~ gdp_within + sta + I(sta^2) + I(sta^3) + I(sta^4) + I(sta^5), data=regDF) 
-summary(lModGrRt)
-par(pch='.')
-plot(regDF$sta,regDF$gdpGroRt_within,ylim=c(-0.1,0.1))
-points(regDF$sta,predict(lModGrRt),col='red')
-
-
-# 
-# lModGrRt <- lm(gdpGroRt ~ gdp + I(gdp^2) + I(gdp*sta) + sta + I(sta^2),data=regDF)
-# summary(lModGrRt)
-# 
-library(plm)
-# feMod <- plm(gdpGro ~ gdp + I(gdp*sta) + sta + I(sta^2) + I(sta^3), index=('id'), model='within',data=regDF)
-# summary(feMod)
-# reMod <- plm(gdpGro ~ gdp + I(gdp*sta) + sta + I(sta^2) + I(sta^3), index=('id'), model='random',data=regDF)
-# summary(reMod)
-# phtest(feMod,reMod)
-# 
-# feModGrRt <- plm(gdpGroRt ~ gdp + I(gdp*sta) + sta + I(sta^2), index=('id'), model='within',data=regDF)
-feModGrRt <- lm(gdpGroRt ~ gdp + I(gdp*sta) + sta + I(sta^2), data=regDF)
-summary(feModGrRt)
-feModGrRtPred <- predict(feModGrRt)
-plot(regDF$gdp,regDF$gdpGroRt,pch='.', xlim=c(0,2e6), ylim=c(-0.1,0.1))
-points(regDF$gdp,feModGrRtPred,pch='.',col='red')
-plot(regDF$sta,regDF$gdpGroRt,pch='.',ylim=c(-0.1,0.1))
-points(regDF$sta,feModGrRtPred,pch='.',col='red')
-
-# reModGrRt <- plm(gdpGroRt ~ gdp + I(gdp*sta) + sta + I(sta^2), index=('id'), model='random',data=regDF)
-# summary(reModGrRt)
-
-feMod <- plm(gdp ~ lgdp + sta + I(sta^2), index='id', model='within',data=regDF)
-# feMod <- plm(rgdp ~ sta + I(sta^2) + pop + esht, index='id', model='within',data=regDF)
-summary(feMod)
-
-# pred ####
-predDF <- regDF
-feModPred <- predict(feMod,newdata = predDF)
-feModGrRtPred <- predict(feModGrRt,newdata = predDF)
-predDF$sta <- 0
-feModPred0sta <- predict(feMod,newdata = predDF)
-feModGrRt0sta <- predict(feModGrRt,newdata = predDF)
-
-# losses ####
-gdpLoss <- feModPred0sta - feModPred
-relGdpLoss <- gdpLoss/feModPred
-plot(regDF$sta,relGdpLoss,pch='.',ylim=c(-0.1,1))
-stas <- seq(0,7,1)
-for(sta in stas){
-	boxplot(relGdpLoss[regDF$sta < sta+0.5 & regDF$sta > sta-0.5],at=sta,add=T)
-}
-
-gdpGrRtLoss <- feModGrRt0sta - feModGrRtPred
-relgdpGrRtLoss <- gdpGrRtLoss / (1+feModGrRt0sta)
-plot(regDF$sta,regDF$gdpGroRt,pch='.',ylim=c(-0.1,0.1))
-points(regDF$sta,feModGrRtPred,pch='.',col='blue')
-points(regDF$sta,feModGrRt0sta,pch='.',col='red')
-
-plot(regDF$sta,gdpGrRtLoss,pch='.',ylim=c(-0.1,0.1))
-plot(regDF$sta,relgdpGrRtLoss,pch='.',ylim=c(-0.1,0.1))
-
-# plot ####
-if(F){
-	par(pch='.')
-	plot(regDF$sta,regDF$gdp,ylim=c(0,2e6))
-	points(regDF$sta,predict(feMod),col='red')
-	plot(regDF$lgdp,regDF$gdp - predict(feMod),xlim=c(0,1e6),ylim=c(-1e6,1e6))
-	
-	zvals <- matrix(fePredGrRt,nrow=length(gdpSup),ncol=length(staSup))
-	plot3d(regDF$gdp[subset],regDF$sta[subset],regDF$gdpGroRt[subset],cex=0.5)
-	surface3d(gdpSup,staSup,zvals,col='red')
-	
-	# plot GrRt 
-
-	plot(regDF$sta,regDF$gdpGroRt,pch='.',ylim=c(-0.1,0.1))
-	points(staSup, my1DPolyFun(staSup, c( mean(fixef(feModGrRt)),feModGrRt$coefficients)),col='red',pch=20)
-	
-	predGro <- my1DPolyFun(staSup, c( mean(fixef(feModGrRt)),feModGrRt$coefficients))
-	DamFac <- 1-predGro/predGro[1]
-	#plot scatter
-	selection <- which(regDF$id==2) 
-	
-	plot(regDF$year[selection],regDF$gdp[selection])
-	plot(regDF$year[selection],regDF$gdpGro[selection])
-	plot(regDF$year[selection],regDF$gdpGroRt[selection])
-	
-	plot(regDF$gdp,regDF$gdpGro,pch='.')
-	plot(regDF$gdp,regDF$gdpGroRt,pch='.',ylim=c(-0.1,0.1), xlim=c(0,2e6))
-	plot(regDF$sta,regDF$gdpGro,pch='.',ylim=c(-2e4,4e4))
-	plot(regDF$sta,regDF$gdpGroRt,pch='.',ylim=c(-0.1,0.1))
-	plot(regDF$sta,regDF$gdp,pch='.',ylim=c(0,1e6))
-	
-	subset <- which(regDF$gdp < 1e6 & abs(regDF$gdpGroRt)<0.1)
-	library(rgl)
-	plot3d(regDF$gdp[subset],regDF$sta[subset],regDF$gdpGroRt[subset],cex=0.5)
-	
-	
-	library(rgl)
-	randomSelectionForPlotting <- sample(plotConstrainedIdc,size = 10000)
-	
-	open3d()
-	plotLim <- 4e4
-	plotConstrainedIdc <- which(abs(regDF$gdpGro)<=plotLim)
-	plot3d(regDF$gdp[plotConstrainedIdc],regDF$sta[plotConstrainedIdc],regDF$gdpGro[plotConstrainedIdc])
-	plotConstrainedIdc <- which(abs(regDF$gdpGroPred)<=plotLim)
-	points3d(regDF$gdp[plotConstrainedIdc],regDF$sta[plotConstrainedIdc],regDF$gdpGroPred[plotConstrainedIdc],col='red')
-	plotConstrainedIdc <- which(abs(regDF$gdpGroPredFE)<=plotLim & abs(regDF$gdp) <= 4e6)
-	points3d(regDF$gdp[plotConstrainedIdc],regDF$sta[plotConstrainedIdc],regDF$gdpGroPredFE[plotConstrainedIdc],col='green')
-	
-	open3d()
-	plot3d(regDF$gdp,regDF$sta,regDF$gdpGroRt,zlim=c(-0.1,0.1),xlim=c(0,4e6))
-	
-	plot(regDF$sta[randomSelectionForPlotting],regDF$gdpGro[randomSelectionForPlotting],pch='.',ylim=c(-2e4,4e4))
-	points(regDF$sta[randomSelectionForPlotting],regDF$gdpGroPred[randomSelectionForPlotting],pch='.',col='red')
-	points(regDF$sta,regDF$gdpGro0Deg,pch='.',col='red')
-}
