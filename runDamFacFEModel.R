@@ -415,6 +415,24 @@ if(makeDFmod){
 	par(pch='.')
 	plot(staSup,predFitM(par,staSup),col='red',type='l',ylim=c(-0.1,0.8),lwd=3)
 	dev.off()
+	
+	png(file.path('figures',figFolder,'2-relgdploss-zoom-funfit.png'),width = plw, height = plh, units = plu, res = pld)
+	par(pch='.')
+	plot(0,0,
+			 xlim=c(0,8),ylim=c(-20,80),
+			 type='n',
+			 # col=1,
+			 xlab='STA',
+			 ylab='relative yearly GDP loss in %',
+			 main='year relative GDP loss')
+	abline(h=seq(-20,80,10),lty=2,col='gray')
+	abline(v=seq(0,8,1),lty=2,col='gray')
+	points(regDF$sta,lModLossRel*100,
+				 col=adjustcolor(1,alpha.f = 0.05))
+	lines(staSup,predFitM(par,staSup),col='red',type='l',lwd=3)
+	mtext(figFolder,3,0.5,cex = 0.7)
+	dev.off()
+	
 	cat('done\n')
 }
 # FE model
