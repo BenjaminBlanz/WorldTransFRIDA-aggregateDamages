@@ -15,6 +15,7 @@ makeDFmod <- TRUE
 
 # read data ####
 if(readData){
+	cat('reading data...')
 	# on my machine
 	# baselineFolder <- file.path('workOutput','determineAggDam_Baseline-S20000-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off',
 	# 														'detectedParmSpace','PerVarFiles-RDS')
@@ -45,7 +46,9 @@ if(readData){
 	nid <- nrow(sta)
 	years <- as.numeric(colnames(sta)[-1])
 	nyear <- length(years)
+	cat('done\n')
 	
+	cat('calculating relative and lagged vars.\n')
 	# calc gro ####
 	gdpGro <- gdp
 	gdppcGro <- gdppc
@@ -55,64 +58,74 @@ if(readData){
 		gdpGro[,as.character(year)] <- gdp[,as.character(year+1)] - gdp[,as.character(year)]
 		gdppcGro[,as.character(year)] <- gdppc[,as.character(year+1)] - gdppc[,as.character(year)]
 	}
-	
 	# calc rel1gdp ####
 	# gdp relative to gdp in the preceedig period ####
+	cat('.')
 	rgdp <- gdp
 	rgdp[,as.character(years[1])] <- NA
 	for(year in years[-nyear]){
 		rgdp[,as.character(year+1)] <- gdp[,as.character(year+1)]/gdp[,as.character(year)]
 	}
 	# lagged GDP ####
+	cat('.')
 	l1gdp <- gdp
 	l1gdp[,as.character(years[1])] <- NA
 	for(year in years[-nyear]){
 		l1gdp[,as.character(year+1)] <- gdp[,as.character(year)]
 	}
 	# twice lagged gdp ####
+	cat('.')
 	l2gdp <- gdp
 	l2gdp[,as.character(years[1:2])] <- NA
 	for(year in years[-((nyear-1):nyear)]){
 		l2gdp[,as.character(year+2)] <- gdp[,as.character(year)]
 	}
 	# thrice lagged gdp ####
+	cat('.')
 	l3gdp <- gdp
 	l3gdp[,as.character(years[1:3])] <- NA
 	for(year in years[-((nyear-2):nyear)]){
 		l3gdp[,as.character(year+3)] <- gdp[,as.character(year)]
 	}
 	# future GDP ####
+	cat('.')
 	fgdp <- gdp
 	fgdp[,as.character(years[nyear])] <- NA
 	for(year in years[-nyear]){
 		fgdp[,as.character(year)] <- gdp[,as.character(year+1)]
 	}
 	# lagged STA ####
+	cat('.')
 	l1sta <- sta
 	l1sta[,as.character(years[1])] <- NA
 	for(year in years[-nyear]){
 		l1sta[,as.character(year+1)] <- sta[,as.character(year)]
 	}
 	# twice lagged STA ####
+	cat('.')
 	l2sta <- sta
 	l2sta[,as.character(years[1:2])] <- NA
 	for(year in years[-((nyear-1):nyear)]){
 		l2sta[,as.character(year+2)] <- sta[,as.character(year)]
 	}
 	# thrice lagged STA ####
+	cat('.')
 	l3sta <- sta
 	l3sta[,as.character(years[1:3])] <- NA
 	for(year in years[-((nyear-2):nyear)]){
 		l3sta[,as.character(year+3)] <- sta[,as.character(year)]
 	}
 	# future STA ####
+	cat('.')
 	fsta <- sta
 	fsta[,as.character(years[nyear])] <- NA
 	for(year in years[-nyear]){
 		fsta[,as.character(year)] <- sta[,as.character(year+1)]
 	}
+	cat('done\n')
 	
 	# restructure data for regresssion ####
+	cat('restructuring data...')
 	regDFColnames <- c('id','year','sta','fsta','l1sta','l2sta','l3sta',
 										 'gdp','l1gdp','l2gdp','l3gdp','fgdp','rgdp','gdppc','gdpGro','gdpGroRt','gdppcGro','gdppcGroRt',
 										 'pop','edem','esup','esht','inf','prinv','puinv')
@@ -144,19 +157,20 @@ if(readData){
 	regDF[,'prinv'] <- unname(unlist(prinv[,-1]))
 	regDF[,'puinv'] <- unname(unlist(puinv[,-1]))
 	regDF <- as.data.frame(regDF)
-	
 	regDF <- regDF[complete.cases(regDF),]
-	
+	cat('done\n')
+	cat('cleanup...')
 	rm(list=c('gdp','fgdp','l1gdp','rgdp','gdpGro','gdppc','gdppcGro','pop','edem','esup','esht','inf','prinv','puinv',
 						'sta','fsta','l1sta','l2sta','l3sta'))
-	gc()
+	gc(verbose = F)
 	# consider drop early years as burn in
 	# regDF <- regDF[regDF$year>=2050,]
-	
 	nobs <- nrow(regDF)
+	cat('done\n')
 }
 
 # data vis ####
+cat('data vis...')
 # png(file.path('figures','0-gdpVsl1gdp.png'),width = plw, height = plh, units = plu, res = pld)
 # par(pch='.')
 # plot(regDF$l1gdp,regDF$gdp)
@@ -188,6 +202,7 @@ plot(regDF$year,regDF$sta,ylim=c(0,10))
 dev.off()
 
 # OLS ####
+cat('empiric model...')
 if(!twoStage){
 	# regular model
 	# lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree), data=regDF)
@@ -242,6 +257,8 @@ if(!twoStage){
 	# lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree) + poly(l1gdp,popNoSta,eshtNoSta,infNoSta,prinvNoSta,puinvNoSta,degree=covDegree), data=regDF)
 	lMod <- lm(gdp ~ poly(l1gdpNoSta,sta,popNoSta,eshtNoSta,infNoSta,prinvNoSta,puinvNoSta,degree=degree), data=regDF)
 }
+cat('done\n')
+cat('diagnostic plots')
 callString <- gsub(' ','',lMod$call)[2]
 if(!twoStage){
 	figFolder <- sprintf('OLS-N-%i-deg-%i-coDeg-%i-%s',nobs,degree,covDegree,callString)
@@ -249,11 +266,11 @@ if(!twoStage){
 	figFolder <- sprintf('2SLS-N-%i-deg-%i-coDeg-%i-%s',nobs,degree,covDegree,callString)
 }
 dir.create(file.path('figures',figFolder),recursive = T,showWarnings = F)
-
+cat('.')
 sink(file.path('figures',figFolder,'modelSummary.txt'))
 summary(lMod)
 sink()
-
+cat('.')
 png(file.path('figures',figFolder,'1-residVsl1gdp.png'),width = plw, height = plh, units = plu, res = pld)
 par(pch='.')
 plot(regDF$l1gdp, resid(lMod),
@@ -263,7 +280,7 @@ plot(regDF$l1gdp, resid(lMod),
 abline(h=0,col='red')
 mtext(figFolder,3,0.5,cex = 0.7)
 dev.off()
-
+cat('.')
 png(file.path('figures',figFolder,'1-residVsSta.png'),width = plw, height = plh, units = plu, res = pld)
 par(pch='.')
 plot(regDF$sta, resid(lMod),
@@ -273,7 +290,7 @@ plot(regDF$sta, resid(lMod),
 abline(h=0,col='red')
 mtext(figFolder,3,0.5,cex = 0.7)
 dev.off()
-
+cat('.')
 residLims <- c(-2e6,2e6)
 png(file.path('figures',figFolder,'1-residVsl1gdp-zoom.png'),width = plw, height = plh, units = plu, res = pld)
 par(pch='.')
@@ -284,8 +301,7 @@ plot(regDF$l1gdp, resid(lMod),
 abline(h=0,col='red')
 mtext(figFolder,3,0.5,cex = 0.7)
 dev.off()
-
-
+cat('.')
 png(file.path('figures',figFolder,'1-residVsSta-zoom.png'),width = plw, height = plh, units = plu, res = pld)
 par(pch='.')
 plot(regDF$sta, resid(lMod),
@@ -296,10 +312,12 @@ plot(regDF$sta, resid(lMod),
 abline(h=0,col='red')
 mtext(figFolder,3,0.5,cex = 0.7)
 dev.off()
-
+cat('done\n')
 # predict ####
 if(makePredict){
+	cat('Projections.')
 	lModPred <- predict(lMod)
+	cat('.')
 	predDF <- regDF
 	predDF$sta <- 0
 	predDF$fsta <- 0
@@ -307,6 +325,9 @@ if(makePredict){
 	predDF$l2sta <- 0
 	predDF$l3sta <- 0
 	lModPred0sta <- predict(lMod, newdata = predDF)
+	cat('.')
+	cat('done\n')
+	cat('Damage Figures.')
 	png(file.path('figures',figFolder,'2-gdpVsl1gdp-pred0.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(regDF$l1gdp, regDF$gdp, xlim=c(0,2e6), ylim=c(-1e7,1e7),
@@ -319,7 +340,7 @@ if(makePredict){
 				 pch=20)
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
-	
+	cat('.')
 	png(file.path('figures',figFolder,'2-gdpVsSta-pred0.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(regDF$sta, regDF$gdp, xlim=c(0,8), ylim=c(-1e7,1e7),
@@ -332,10 +353,10 @@ if(makePredict){
 				 pch=20)
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
-	
-	lModLoss <- lModPred0sta - regDF$gdp
+	cat('.')
+		lModLoss <- lModPred0sta - regDF$gdp
 	lModLossRel <- lModLoss/regDF$gdp
-	
+	cat('.')
 	png(file.path('figures',figFolder,'2-relgdploss.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(regDF$sta,lModLossRel,
@@ -345,7 +366,7 @@ if(makePredict){
 			 main='year relative GDP loss')
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
-	
+	cat('.')
 	png(file.path('figures',figFolder,'2-relgdploss-zoom.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(0,0,
@@ -361,10 +382,12 @@ if(makePredict){
 				 col=adjustcolor(1,alpha.f = 0.05))
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
+	cat('done\n')
 }
 
 # model2 ####
 if(makeDFmod){
+	cat('Fitting damage function.')
 	library(optimx)
 	predFitM <- function(par,sta){
 		return(par[1] + par[2]*log(sta+par[3])+par[4]*sta)
@@ -375,11 +398,14 @@ if(makeDFmod){
 	par0 <- c(0,0.04,0.5,0)
 	fittedPar <- optimx(par0,fitRMSE,method = 'BFGS',sta=regDF$sta)
 	par <- unlist(unname(fittedPar[which.min(fittedPar$value),1:length(par0)]))
+	cat('done\n')
+	cat('Damage function figure...')
 	staSup <- seq(-par[1],10,length.out=200)
 	png(file.path('figures',figFolder,'3-rel1gdplossFunFit.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(staSup,predFitM(par,staSup),col='red',type='l',ylim=c(-0.1,0.8),lwd=3)
 	dev.off()
+	cat('done\n')
 }
 # FE model
 # discarded as errors are larger than in the corresponding standard model
