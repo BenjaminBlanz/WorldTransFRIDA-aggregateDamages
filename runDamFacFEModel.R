@@ -314,6 +314,11 @@ abline(h=0,col='red')
 mtext(figFolder,3,0.5,cex = 0.7)
 dev.off()
 cat('done\n')
+
+cat('cleanup...')
+gc(verbose = F)
+cat('done\n')
+
 # predict ####
 if(makePredict){
 	cat('Projections.')
@@ -385,6 +390,10 @@ if(makePredict){
 	dev.off()
 	cat('done\n')
 }
+
+cat('cleanup...')
+gc(verbose = F)
+cat('done\n')
 
 # model2 ####
 if(makeDFmod){
