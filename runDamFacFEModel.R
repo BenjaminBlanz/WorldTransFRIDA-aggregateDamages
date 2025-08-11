@@ -48,7 +48,7 @@ if(readData){
 	nyear <- length(years)
 	cat('done\n')
 	
-	cat('calculating relative and lagged vars.\n')
+	cat('calculating relative and lagged vars.')
 	# calc gro ####
 	gdpGro <- gdp
 	gdppcGro <- gdppc
@@ -200,6 +200,7 @@ png(file.path('figures','0-staVsTime-zoom.png'),width = plw, height = plh, units
 par(pch='.')
 plot(regDF$year,regDF$sta,ylim=c(0,10))
 dev.off()
+cat('done\n')
 
 # OLS ####
 cat('empiric model...')
