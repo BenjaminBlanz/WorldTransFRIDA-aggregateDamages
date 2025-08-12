@@ -274,6 +274,7 @@ cat('.')
 sink(file.path('figures',figFolder,'modelSummary.txt'))
 summary(lMod)
 sink()
+saveRDS(lMod,file.path('figures',figFolder,'lMod.RDS'))
 cat('.')
 png(file.path('figures',figFolder,'1-residVsl1gdp.png'),width = plw, height = plh, units = plu, res = pld)
 par(pch='.')
@@ -326,6 +327,7 @@ cat('done\n')
 if(makePredict){
 	cat('Projections.')
 	lModPred <- predict(lMod)
+	gc(verbose = F)
 	cat('.')
 	predDF <- regDF
 	predDF$sta <- 0
@@ -334,6 +336,7 @@ if(makePredict){
 	predDF$l2sta <- 0
 	predDF$l3sta <- 0
 	lModPred0sta <- predict(lMod, newdata = predDF)
+	gc()
 	cat('.')
 	cat('done\n')
 	cat('Damage Figures.')
