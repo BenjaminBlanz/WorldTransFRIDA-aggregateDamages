@@ -1,6 +1,6 @@
 # config
 
-degree <- 3
+degree <- 4
 covDegree <- 3
 twoStage <- FALSE
 plw <- 6+0.21
@@ -10,7 +10,7 @@ pld <- 2000
 
 readData <- TRUE
 makePredict <- TRUE
-makeDFmod <- TRUE
+makeDFmod <- F
 
 
 # read data ####
@@ -213,6 +213,8 @@ if(!twoStage){
 	# lMod <- lm(gdp ~ poly(l1gdp,sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
 	 
 	# lMod <- lm(fgdp ~ poly(gdp,l1gdp,fsta,sta,l1sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
+	# lMod <- lm(fgdp ~ -1+poly(gdp,l1gdp,sta,l1sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
+	lMod <- lm(fgdp ~ poly(gdp,l1gdp,l2gdp,l3gdp,fsta,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
 	# lMod <- lm(fgdp ~ poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
 	#no interaction effects
 	# lMod <- lm(fgdp ~ poly(gdp,degree=dgree)+
@@ -229,7 +231,8 @@ if(!twoStage){
 	# 					 	poly(puinv,degree=dgree),
 	# 					 data=regDF)
 	#no constant	
-	lMod <- lm(fgdp ~ -1+poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
+	# lMod <- lm(gdp ~ -1+poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
+	# lMod <- lm(fgdp ~ -1+poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
 	
 	# lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree) + poly(l1gdp,pop,esht,inf,prinv,puinv,degree=covDegree), data=regDF)
 } else{
@@ -442,3 +445,5 @@ if(makeDFmod){
 # levels for each groups means that their origins no longer conincide for cases where
 # data have strong trends, such as this.
 # 
+cat(sprintf('Model %s complte\n',callString))
+cat(sprintf('figures in %s .\n',figFolder)) 
