@@ -2,7 +2,6 @@
 
 degree <- 4
 covDegree <- 3
-twoStage <- FALSE
 plw <- 6+0.21
 plh <- 6+0.51
 plu <- 'in'
@@ -204,63 +203,39 @@ cat('done\n')
 
 # OLS ####
 cat('empiric model...')
-if(!twoStage){
-	# regular model
-	# lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree), data=regDF)
-	
-	# lMod <- lm(gdp ~ poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
-	
-	# lMod <- lm(gdp ~ poly(l1gdp,sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
-	 
-	# lMod <- lm(fgdp ~ poly(gdp,l1gdp,fsta,sta,l1sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
-	# lMod <- lm(fgdp ~ -1+poly(gdp,l1gdp,sta,l1sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
-	lMod <- lm(fgdp ~ poly(gdp,l1gdp,l2gdp,l3gdp,fsta,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
-	# lMod <- lm(fgdp ~ poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
-	#no interaction effects
-	# lMod <- lm(fgdp ~ poly(gdp,degree=dgree)+
-	# 					 	poly(l1gdp,degree=dgree)+
-	# 					 	poly(l2gdp,degree=dgree)+
-	# 					 	poly(fsta,degree=dgree)+
-	# 					 	poly(sta,degree=dgree)+
-	# 					 	poly(l1sta,degree=dgree)+
-	# 					 	poly(l2sta,degree=dgree)+
-	# 					 	poly(pop,degree=dgree)+
-	# 					 	poly(esht,degree=dgree)+
-	# 					 	poly(inf,degree=dgree)+
-	# 					 	poly(prinv,degree=dgree)+
-	# 					 	poly(puinv,degree=dgree),
-	# 					 data=regDF)
-	#no constant	
-	# lMod <- lm(gdp ~ -1+poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
-	# lMod <- lm(fgdp ~ -1+poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
-	
-	# lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree) + poly(l1gdp,pop,esht,inf,prinv,puinv,degree=covDegree), data=regDF)
-} else{
-	# 2 stage model
-	# 1st stages remove the influence of sta from the other covariates
-	l1gdpMod <- lm(l1gdp ~ poly(sta,degree=degree), data=regDF)
-	regDF$l1gdpNoSta <- resid(l1gdpMod)
-	rm(l1gdpMod)
-	popMod <- lm(pop ~ poly(sta,degree=degree), data=regDF)
-	regDF$popNoSta <- resid(popMod)
-	rm(popMod)
-	eshtMod <- lm(esht ~ poly(sta,degree=degree), data=regDF)
-	regDF$eshtNoSta <- resid(eshtMod)
-	rm(eshtMod)
-	infMod <- lm(inf ~ poly(sta,degree=degree), data=regDF)
-	regDF$infNoSta <- resid(infMod)
-	rm(infMod)
-	prinvMod <- lm(prinv ~ poly(sta,degree=degree), data=regDF)
-	regDF$prinvNoSta <- resid(prinvMod)
-	rm(prinvMod)
-	puinvMod <- lm(puinv ~ poly(sta,degree=degree), data=regDF)
-	regDF$puinvNoSta <- resid(puinvMod)
-	rm(puinvMod)
-	gc()
-	# 2nd stage model with sta and covariates
-	# lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree) + poly(l1gdp,popNoSta,eshtNoSta,infNoSta,prinvNoSta,puinvNoSta,degree=covDegree), data=regDF)
-	lMod <- lm(gdp ~ poly(l1gdpNoSta,sta,popNoSta,eshtNoSta,infNoSta,prinvNoSta,puinvNoSta,degree=degree), data=regDF)
-}
+# regular model
+# lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree), data=regDF)
+
+# lMod <- lm(gdp ~ poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
+
+# lMod <- lm(gdp ~ poly(l1gdp,sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
+ 
+# lMod <- lm(fgdp ~ poly(gdp,l1gdp,fsta,sta,l1sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
+# lMod <- lm(fgdp ~ -1+poly(gdp,l1gdp,sta,l1sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
+# 
+# lMod <- lm(fgdp ~ poly(gdp,l1gdp,l2gdp,l3gdp,fsta,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
+#
+# lMod <- lm(fgdp ~ poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
+#no interaction effects
+# lMod <- lm(fgdp ~ poly(gdp,degree=dgree)+
+# 					 	poly(l1gdp,degree=dgree)+
+# 					 	poly(l2gdp,degree=dgree)+
+# 					 	poly(fsta,degree=dgree)+
+# 					 	poly(sta,degree=dgree)+
+# 					 	poly(l1sta,degree=dgree)+
+# 					 	poly(l2sta,degree=dgree)+
+# 					 	poly(pop,degree=dgree)+
+# 					 	poly(esht,degree=dgree)+
+# 					 	poly(inf,degree=dgree)+
+# 					 	poly(prinv,degree=dgree)+
+# 					 	poly(puinv,degree=dgree),
+# 					 data=regDF)
+#no constant	
+# lMod <- lm(gdp ~ -1+poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
+# lMod <- lm(fgdp ~ -1+poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
+# lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree) + poly(l1gdp,pop,esht,inf,prinv,puinv,degree=covDegree), data=regDF)
+#fixed effects time trends
+lMod <- lm(fgdp ~ factor(id) + factor(id):year + poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,degree=degree), data=regDF)
 cat('done\n')
 cat('diagnostic plots')
 callString <- gsub(' ','',lMod$call)[2]
