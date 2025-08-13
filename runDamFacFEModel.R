@@ -239,11 +239,7 @@ lMod <- lm(fgdp ~ factor(id) + factor(id):year + poly(gdp,l1gdp,l2gdp,fsta,sta,l
 cat('done\n')
 cat('diagnostic plots')
 callString <- gsub(' ','',lMod$call)[2]
-if(!twoStage){
-	figFolder <- sprintf('OLS-N-%i-deg-%i-coDeg-%i-%s',nobs,degree,covDegree,callString)
-} else{
-	figFolder <- sprintf('2SLS-N-%i-deg-%i-coDeg-%i-%s',nobs,degree,covDegree,callString)
-}
+figFolder <- sprintf('OLS-N-%i-deg-%i-coDeg-%i-%s',nobs,degree,covDegree,callString)
 dir.create(file.path('figures',figFolder),recursive = T,showWarnings = F)
 cat('.')
 sink(file.path('figures',figFolder,'modelSummary.txt'))
@@ -416,12 +412,5 @@ if(makeDFmod){
 	
 	cat('done\n')
 }
-# FE model
-# discarded as errors are larger than in the corresponding standard model
-# this is due to the fe only accounting for differences in the level between groups
-# not for differences in trends between groups. In fact removing the average
-# levels for each groups means that their origins no longer conincide for cases where
-# data have strong trends, such as this.
-# 
 cat(sprintf('Model %s complte\n',callString))
 cat(sprintf('figures in %s .\n',figFolder)) 
