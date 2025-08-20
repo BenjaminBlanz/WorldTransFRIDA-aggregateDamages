@@ -256,7 +256,7 @@ png(file.path('figures',figFolder,'1-residVsl1gdp.png'),width = plw, height = pl
 par(pch='.')
 plot(regDF$l1gdp, resid(lMod),
 		 xlim=c(0,5e6),
-		 # col=adjustcolor(1,alpha.f = 0.01),
+		 col=adjustcolor(1,alpha.f = 0.05),
 		 main='prediction error')
 abline(h=0,col='red')
 mtext(figFolder,3,0.5,cex = 0.7)
@@ -266,7 +266,7 @@ png(file.path('figures',figFolder,'1-residVsSta.png'),width = plw, height = plh,
 par(pch='.')
 plot(regDF$sta, resid(lMod),
 		 xlim=c(0,8),
-		 # col=adjustcolor(1,alpha.f = 0.01),
+		 col=adjustcolor(1,alpha.f = 0.05),
 		 main='prediction error')
 abline(h=0,col='red')
 mtext(figFolder,3,0.5,cex = 0.7)
@@ -278,7 +278,7 @@ for(zooms.i in 1:length(zoomLevels)){
 	par(pch='.')
 	plot(regDF$l1gdp, resid(lMod),
 			 xlim=c(0,5e6),ylim=residLims,
-			 # col=adjustcolor(1,alpha.f = 0.01),
+			 col=adjustcolor(1,alpha.f = 0.05),
 			 main='prediction error')
 	abline(h=0,col='red')
 	mtext(figFolder,3,0.5,cex = 0.7)
@@ -289,7 +289,7 @@ for(zooms.i in 1:length(zoomLevels)){
 	plot(regDF$sta, resid(lMod),
 			 xlim=c(0,8),
 			 ylim=residLims,
-			 # col=adjustcolor(1,alpha.f = 0.01),
+			 col=adjustcolor(1,alpha.f = 0.05),
 			 main='prediction error')
 	abline(h=0,col='red')
 	mtext(figFolder,3,0.5,cex = 0.7)
