@@ -17,10 +17,10 @@ makeDFmod <- F
 if(readData){
 	cat('reading data...')
 	# on my machine
-	baselineFolder <- file.path('workOutput','determineAggDam_Baseline-S20000-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off',
-															'detectedParmSpace','PerVarFiles-RDS')
+	# baselineFolder <- file.path('workOutput','determineAggDam_Baseline-S20000-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off',
+	# 														'detectedParmSpace','PerVarFiles-RDS')
 	# on levante
-	# baselineFolder <- file.path('/work/mh0033/b383346/WorldTransFrida-Uncertainty/workOutput/UA_EMBv6Try2_nS100000/detectedParmSpace/PerVarFiles-RDS')
+	baselineFolder <- file.path('/work/mh0033/b383346/WorldTransFrida-Uncertainty/workOutput/UA_EMBv6Try2_nS100000/detectedParmSpace/PerVarFiles-RDS')
 	
 	gdp <- readRDS(file.path(baselineFolder,'gdp_real_gdp_in_2021c.RDS'))
 	gdp <- gdp[complete.cases(gdp),] # drop incomplete runs
@@ -250,7 +250,7 @@ cat('.')
 sink(file.path('figures',figFolder,'modelSummary.txt'))
 summary(lMod)
 sink()
-saveRDS(lMod,file.path('figures',figFolder,'lMod.RDS'))
+# saveRDS(lMod,file.path('figures',figFolder,'lMod.RDS'))
 cat('.')
 png(file.path('figures',figFolder,'1-residVsl1gdp.png'),width = plw, height = plh, units = plu, res = pld)
 par(pch='.')
