@@ -1,11 +1,12 @@
 # config
 
-degree <- 4
+degree <- 3
 covDegree <- 3
 plw <- 6+0.21
 plh <- 6+0.51
 plu <- 'in'
 pld <- 2000
+zoomLevels <- c(2e6,1e6,5e5,1e5,5e4)
 
 readData <- TRUE
 makePredict <- TRUE
@@ -16,10 +17,10 @@ makeDFmod <- F
 if(readData){
 	cat('reading data...')
 	# on my machine
-	# baselineFolder <- file.path('workOutput','determineAggDam_Baseline-S20000-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off',
-	# 														'detectedParmSpace','PerVarFiles-RDS')
+	baselineFolder <- file.path('workOutput','determineAggDam_Baseline-S20000-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off',
+															'detectedParmSpace','PerVarFiles-RDS')
 	# on levante
-	baselineFolder <- file.path('/work/mh0033/b383346/WorldTransFrida-Uncertainty/workOutput/UA_EMBv6Try2_nS100000/detectedParmSpace/PerVarFiles-RDS')
+	# baselineFolder <- file.path('/work/mh0033/b383346/WorldTransFrida-Uncertainty/workOutput/UA_EMBv6Try2_nS100000/detectedParmSpace/PerVarFiles-RDS')
 	
 	gdp <- readRDS(file.path(baselineFolder,'gdp_real_gdp_in_2021c.RDS'))
 	gdp <- gdp[complete.cases(gdp),] # drop incomplete runs
@@ -206,7 +207,7 @@ cat('empiric model...')
 # regular model
 # lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree), data=regDF)
 
-# lMod <- lm(gdp ~ poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
+lMod <- lm(gdp ~ poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
 
 # lMod <- lm(gdp ~ poly(l1gdp,sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
  
@@ -235,7 +236,11 @@ cat('empiric model...')
 # lMod <- lm(fgdp ~ -1+poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
 # lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree) + poly(l1gdp,pop,esht,inf,prinv,puinv,degree=covDegree), data=regDF)
 #fixed effects time trends
-lMod <- lm(fgdp ~ factor(id) + factor(id):year + poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,degree=degree), data=regDF)
+# lMod <- lm(fgdp ~ factor(id) + factor(id):year + poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,degree=degree), data=regDF)
+# library(fixest)
+# # lMod <- feols(fgdp ~ id + id:year + gdp+gdp^2+l1gdp+l2gdp+fsta+gdp*sta+gdp*sta^2+sta+sta^2+sta^3+l1sta+l2sta|id, data=regDF)
+# lMod <- feols(fgdp ~ id:gdp + id:gdp^2+fsta*gdp+fsta^2*gdp|id, data=regDF)
+
 cat('done\n')
 cat('diagnostic plots')
 callString <- gsub(' ','',lMod$call)[2]
@@ -267,27 +272,29 @@ abline(h=0,col='red')
 mtext(figFolder,3,0.5,cex = 0.7)
 dev.off()
 cat('.')
-residLims <- c(-2e6,2e6)
-png(file.path('figures',figFolder,'1-residVsl1gdp-zoom.png'),width = plw, height = plh, units = plu, res = pld)
-par(pch='.')
-plot(regDF$l1gdp, resid(lMod),
-		 xlim=c(0,5e6),ylim=residLims,
-		 # col=adjustcolor(1,alpha.f = 0.01),
-		 main='prediction error')
-abline(h=0,col='red')
-mtext(figFolder,3,0.5,cex = 0.7)
-dev.off()
-cat('.')
-png(file.path('figures',figFolder,'1-residVsSta-zoom.png'),width = plw, height = plh, units = plu, res = pld)
-par(pch='.')
-plot(regDF$sta, resid(lMod),
-		 xlim=c(0,8),
-		 ylim=residLims,
-		 # col=adjustcolor(1,alpha.f = 0.01),
-		 main='prediction error')
-abline(h=0,col='red')
-mtext(figFolder,3,0.5,cex = 0.7)
-dev.off()
+for(zooms.i in 1:length(zoomLevels)){
+	residLims <- c(-zoomLevels[zooms.i],zoomLevels[zooms.i])
+	png(file.path('figures',figFolder,paste0('1-residVsl1gdp-zoom-',zooms.i,'.png')),width = plw, height = plh, units = plu, res = pld)
+	par(pch='.')
+	plot(regDF$l1gdp, resid(lMod),
+			 xlim=c(0,5e6),ylim=residLims,
+			 # col=adjustcolor(1,alpha.f = 0.01),
+			 main='prediction error')
+	abline(h=0,col='red')
+	mtext(figFolder,3,0.5,cex = 0.7)
+	dev.off()
+	cat('.')
+	png(file.path('figures',figFolder,paste0('1-residVsSta-zoom',zooms.i,'.png')),width = plw, height = plh, units = plu, res = pld)
+	par(pch='.')
+	plot(regDF$sta, resid(lMod),
+			 xlim=c(0,8),
+			 ylim=residLims,
+			 # col=adjustcolor(1,alpha.f = 0.01),
+			 main='prediction error')
+	abline(h=0,col='red')
+	mtext(figFolder,3,0.5,cex = 0.7)
+	dev.off()
+}
 cat('done\n')
 
 cat('cleanup...')
@@ -307,7 +314,7 @@ if(makePredict){
 	predDF$l2sta <- 0
 	predDF$l3sta <- 0
 	lModPred0sta <- predict(lMod, newdata = predDF)
-	gc()
+	gc(verbose=F)
 	cat('.')
 	cat('done\n')
 	cat('Damage Figures.')
