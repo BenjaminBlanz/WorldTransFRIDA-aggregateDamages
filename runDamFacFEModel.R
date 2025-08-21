@@ -247,7 +247,7 @@ lMod <- lm(gdp ~ poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), da
 cat('done\n')
 cat('diagnostic plots')
 callString <- gsub(' ','',lMod$call)[2]
-figFolder <- sprintf('OLS-N-%i-deg-%i-coDeg-%i-%s',nobs,degree,covDegree,callString)
+figFolder <- sprintf('OLS-N-%i-deg-%i-coDeg-%i-piv-%s-%s',nobs,degree,covDegree,gsub('\\.','_',predPivot),callString)
 dir.create(file.path('figures',figFolder),recursive = T,showWarnings = F)
 cat('.')
 sink(file.path('figures',figFolder,'modelSummary.txt'))
@@ -351,7 +351,7 @@ if(makePredict){
 	lModLoss <- lModPred0sta - regDF$gdp
 	lModLossRel <- lModLoss/regDF$gdp
 	cat('.')
-	png(file.path('figures',figFolder,'3-relgdploss.png'),width = plw, height = plh, units = plu, res = pld)
+	png(file.path('figures',figFolder,'3-1-relgdploss.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(regDF$sta,lModLossRel,
 			 xlim=c(0,8),
@@ -361,7 +361,7 @@ if(makePredict){
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
 	cat('.')
-	png(file.path('figures',figFolder,'3-relgdploss-zoom.png'),width = plw, height = plh, units = plu, res = pld)
+	png(file.path('figures',figFolder,'3-1-relgdploss-zoom.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(0,0,
 			 xlim=c(0,8),ylim=c(-20,80),
@@ -381,17 +381,17 @@ if(makePredict){
 	lModLoss <- lModPred0sta - lModPred
 	lModLossRel <- lModLoss/lModPred
 	cat('.')
-	png(file.path('figures',figFolder,'3-relgdploss-withinModel.png'),width = plw, height = plh, units = plu, res = pld)
+	png(file.path('figures',figFolder,'3-2-relgdploss-withinModel.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(regDF$sta,lModLossRel,
 			 xlim=c(0,8),
 			 col=adjustcolor(1,alpha.f = 0.05),
 			 # col=1,
-			 main='year relative GDP loss')
+			 main='year relative GDP loss within emp model')
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
 	cat('.')
-	png(file.path('figures',figFolder,'3-relgdploss-withinModel-zoom.png'),width = plw, height = plh, units = plu, res = pld)
+	png(file.path('figures',figFolder,'3-2-relgdploss-withinModel-zoom.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(0,0,
 			 xlim=c(0,8),ylim=c(-20,80),
