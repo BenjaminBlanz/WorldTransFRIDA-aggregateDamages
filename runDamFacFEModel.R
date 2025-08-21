@@ -9,7 +9,7 @@ pld <- 2000
 zoomLevels <- c(2e6,1e6,5e5,1e5,5e4)
 
 # point in STA at which to make the counterfactual prediction
-predPivot <- 1
+predPivot <- 0
 
 readData <- TRUE
 makePredict <- TRUE
