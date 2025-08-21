@@ -6,7 +6,8 @@ plw <- 6+0.21
 plh <- 6+0.51
 plu <- 'in'
 pld <- 2000
-zoomLevels <- c(2e6,1e6,5e5,1e5,5e4)
+zoomLevels <- c(2e6,1e6,5e5,1e5,5e4,2.5e4,1e4)
+pointAlpha <- 0.02
 
 # point in STA at which to make the counterfactual prediction
 if(!exists('predPivot')){
@@ -213,7 +214,7 @@ cat('empiric model...')
 # regular model
 # lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree), data=regDF)
 
-lMod <- lm(gdp ~ poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
+# lMod <- lm(gdp ~ poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
 
 # lMod <- lm(gdp ~ poly(l1gdp,sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
  
@@ -243,9 +244,8 @@ lMod <- lm(gdp ~ poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), da
 # lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree) + poly(l1gdp,pop,esht,inf,prinv,puinv,degree=covDegree), data=regDF)
 #fixed effects time trends
 # lMod <- lm(fgdp ~ factor(id) + factor(id):year + poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,degree=degree), data=regDF)
-# library(fixest)
-# # lMod <- feols(fgdp ~ id + id:year + gdp+gdp^2+l1gdp+l2gdp+fsta+gdp*sta+gdp*sta^2+sta+sta^2+sta^3+l1sta+l2sta|id, data=regDF)
-# lMod <- feols(fgdp ~ id:gdp + id:gdp^2+fsta*gdp+fsta^2*gdp|id, data=regDF)
+library(fixest)
+lMod <- feols(fgdp ~ gdp + gdp^2+fsta*gdp+fsta^2*gdp|id[gdp], data=regDF)
 
 cat('done\n')
 cat('diagnostic plots')
@@ -262,7 +262,7 @@ png(file.path('figures',figFolder,'1-1-residVsl1gdp.png'),width = plw, height = 
 par(pch='.')
 plot(regDF$l1gdp, resid(lMod),
 		 xlim=c(0,5e6),
-		 col=adjustcolor(1,alpha.f = 0.05),
+		 col=adjustcolor(1,alpha.f = pointAlpha),
 		 main='prediction error')
 abline(h=0,col='red')
 mtext(figFolder,3,0.5,cex = 0.7)
@@ -272,7 +272,7 @@ png(file.path('figures',figFolder,'1-2-residVsSta.png'),width = plw, height = pl
 par(pch='.')
 plot(regDF$sta, resid(lMod),
 		 xlim=c(0,8),
-		 col=adjustcolor(1,alpha.f = 0.05),
+		 col=adjustcolor(1,alpha.f = pointAlpha),
 		 main='prediction error')
 abline(h=0,col='red')
 mtext(figFolder,3,0.5,cex = 0.7)
@@ -284,7 +284,7 @@ for(zooms.i in 1:length(zoomLevels)){
 	par(pch='.')
 	plot(regDF$l1gdp, resid(lMod),
 			 xlim=c(0,5e6),ylim=residLims,
-			 col=adjustcolor(1,alpha.f = 0.05),
+			 col=adjustcolor(1,alpha.f = pointAlpha),
 			 main='prediction error')
 	abline(h=0,col='red')
 	mtext(figFolder,3,0.5,cex = 0.7)
@@ -295,7 +295,7 @@ for(zooms.i in 1:length(zoomLevels)){
 	plot(regDF$sta, resid(lMod),
 			 xlim=c(0,8),
 			 ylim=residLims,
-			 col=adjustcolor(1,alpha.f = 0.05),
+			 col=adjustcolor(1,alpha.f = pointAlpha),
 			 main='prediction error')
 	abline(h=0,col='red')
 	mtext(figFolder,3,0.5,cex = 0.7)
@@ -358,7 +358,7 @@ if(makePredict){
 	par(pch='.')
 	plot(regDF$sta,lModLossRel,
 			 xlim=c(0,8),
-			 col=adjustcolor(1,alpha.f = 0.05),
+			 col=adjustcolor(1,alpha.f = pointAlpha),
 			 # col=1,
 			 main='year relative GDP loss')
 	mtext(figFolder,3,0.5,cex = 0.7)
@@ -376,7 +376,7 @@ if(makePredict){
 	abline(h=seq(-20,80,10),lty=2,col='gray')
 	abline(v=seq(0,8,1),lty=2,col='gray')
 	points(regDF$sta,lModLossRel*100,
-				 col=adjustcolor(1,alpha.f = 0.05))
+				 col=adjustcolor(1,alpha.f = pointAlpha))
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
 	cat('done\n')
@@ -388,7 +388,7 @@ if(makePredict){
 	par(pch='.')
 	plot(regDF$sta,lModLossRel,
 			 xlim=c(0,8),
-			 col=adjustcolor(1,alpha.f = 0.05),
+			 col=adjustcolor(1,alpha.f = pointAlpha),
 			 # col=1,
 			 main='year relative GDP loss within emp model')
 	mtext(figFolder,3,0.5,cex = 0.7)
@@ -406,7 +406,7 @@ if(makePredict){
 	abline(h=seq(-20,80,10),lty=2,col='gray')
 	abline(v=seq(0,8,1),lty=2,col='gray')
 	points(regDF$sta,lModLossRel*100,
-				 col=adjustcolor(1,alpha.f = 0.05))
+				 col=adjustcolor(1,alpha.f = pointAlpha))
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
 	cat('done\n')
@@ -449,7 +449,7 @@ if(makeDFmod){
 	abline(h=seq(-20,80,10),lty=2,col='gray')
 	abline(v=seq(0,8,1),lty=2,col='gray')
 	points(regDF$sta,lModLossRel*100,
-				 col=adjustcolor(1,alpha.f = 0.05))
+				 col=adjustcolor(1,alpha.f = pointAlpha))
 	lines(staSup,predFitM(par,staSup),col='red',type='l',lwd=3)
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
