@@ -12,8 +12,9 @@ zoomLevels <- c(2e6,1e6,5e5,1e5,5e4)
 if(!exists('predPivot')){
 	predPivot <- 0
 }
-
-readData <- TRUE
+if(!exists('readData')){
+	readData <- TRUE
+}
 makePredict <- TRUE
 makeDFmod <- F
 
