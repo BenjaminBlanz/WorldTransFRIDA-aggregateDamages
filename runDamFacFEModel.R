@@ -1,4 +1,4 @@
-# config
+# config ####
 
 degree <- 3
 covDegree <- 3
@@ -7,6 +7,9 @@ plh <- 6+0.51
 plu <- 'in'
 pld <- 2000
 zoomLevels <- c(2e6,1e6,5e5,1e5,5e4)
+
+# point in STA at which to make the counterfactual prediction
+predPivot <- 1
 
 readData <- TRUE
 makePredict <- TRUE
@@ -252,7 +255,7 @@ summary(lMod)
 sink()
 # saveRDS(lMod,file.path('figures',figFolder,'lMod.RDS'))
 cat('.')
-png(file.path('figures',figFolder,'1-residVsl1gdp.png'),width = plw, height = plh, units = plu, res = pld)
+png(file.path('figures',figFolder,'1-1-residVsl1gdp.png'),width = plw, height = plh, units = plu, res = pld)
 par(pch='.')
 plot(regDF$l1gdp, resid(lMod),
 		 xlim=c(0,5e6),
@@ -262,7 +265,7 @@ abline(h=0,col='red')
 mtext(figFolder,3,0.5,cex = 0.7)
 dev.off()
 cat('.')
-png(file.path('figures',figFolder,'1-residVsSta.png'),width = plw, height = plh, units = plu, res = pld)
+png(file.path('figures',figFolder,'1-2-residVsSta.png'),width = plw, height = plh, units = plu, res = pld)
 par(pch='.')
 plot(regDF$sta, resid(lMod),
 		 xlim=c(0,8),
@@ -274,7 +277,7 @@ dev.off()
 cat('.')
 for(zooms.i in 1:length(zoomLevels)){
 	residLims <- c(-zoomLevels[zooms.i],zoomLevels[zooms.i])
-	png(file.path('figures',figFolder,paste0('1-residVsl1gdp-zoom-',zooms.i,'.png')),width = plw, height = plh, units = plu, res = pld)
+	png(file.path('figures',figFolder,paste0('1-1-residVsl1gdp-zoom-',zooms.i,'.png')),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(regDF$l1gdp, resid(lMod),
 			 xlim=c(0,5e6),ylim=residLims,
@@ -284,7 +287,7 @@ for(zooms.i in 1:length(zoomLevels)){
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
 	cat('.')
-	png(file.path('figures',figFolder,paste0('1-residVsSta-zoom',zooms.i,'.png')),width = plw, height = plh, units = plu, res = pld)
+	png(file.path('figures',figFolder,paste0('1-2-residVsSta-zoom',zooms.i,'.png')),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(regDF$sta, resid(lMod),
 			 xlim=c(0,8),
@@ -301,24 +304,24 @@ cat('cleanup...')
 gc(verbose = F)
 cat('done\n')
 
-# predict ####
 if(makePredict){
+	# predict ####
 	cat('Projections.')
 	lModPred <- predict(lMod)
 	gc(verbose = F)
 	cat('.')
 	predDF <- regDF
-	predDF$sta <- 0
-	predDF$fsta <- 0
-	predDF$l1sta <- 0
-	predDF$l2sta <- 0
-	predDF$l3sta <- 0
+	predDF$sta <- predPivot
+	predDF$fsta <- predPivot
+	predDF$l1sta <- predPivot
+	predDF$l2sta <- predPivot
+	predDF$l3sta <- predPivot
 	lModPred0sta <- predict(lMod, newdata = predDF)
 	gc(verbose=F)
 	cat('.')
 	cat('done\n')
 	cat('Damage Figures.')
-	png(file.path('figures',figFolder,'2-gdpVsl1gdp-pred0.png'),width = plw, height = plh, units = plu, res = pld)
+	png(file.path('figures',figFolder,'2-1-gdpVsl1gdp-pred0.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(regDF$l1gdp, regDF$gdp, xlim=c(0,2e6), ylim=c(-1e7,1e7),
 			 main='gdp depending on gdp_t-1')
@@ -331,7 +334,7 @@ if(makePredict){
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
 	cat('.')
-	png(file.path('figures',figFolder,'2-gdpVsSta-pred0.png'),width = plw, height = plh, units = plu, res = pld)
+	png(file.path('figures',figFolder,'2-2-gdpVsSta-pred0.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(regDF$sta, regDF$gdp, xlim=c(0,8), ylim=c(-1e7,1e7),
 			 main='gdp depending on gdp_t-1')
@@ -344,10 +347,11 @@ if(makePredict){
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
 	cat('.')
-		lModLoss <- lModPred0sta - regDF$gdp
+	# damages ####
+	lModLoss <- lModPred0sta - regDF$gdp
 	lModLossRel <- lModLoss/regDF$gdp
 	cat('.')
-	png(file.path('figures',figFolder,'2-relgdploss.png'),width = plw, height = plh, units = plu, res = pld)
+	png(file.path('figures',figFolder,'3-relgdploss.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(regDF$sta,lModLossRel,
 			 xlim=c(0,8),
@@ -357,7 +361,7 @@ if(makePredict){
 	mtext(figFolder,3,0.5,cex = 0.7)
 	dev.off()
 	cat('.')
-	png(file.path('figures',figFolder,'2-relgdploss-zoom.png'),width = plw, height = plh, units = plu, res = pld)
+	png(file.path('figures',figFolder,'3-relgdploss-zoom.png'),width = plw, height = plh, units = plu, res = pld)
 	par(pch='.')
 	plot(0,0,
 			 xlim=c(0,8),ylim=c(-20,80),
@@ -366,6 +370,36 @@ if(makePredict){
 			 xlab='STA',
 			 ylab='relative yearly GDP loss in %',
 			 main='year relative GDP loss')
+	abline(h=seq(-20,80,10),lty=2,col='gray')
+	abline(v=seq(0,8,1),lty=2,col='gray')
+	points(regDF$sta,lModLossRel*100,
+				 col=adjustcolor(1,alpha.f = 0.05))
+	mtext(figFolder,3,0.5,cex = 0.7)
+	dev.off()
+	cat('done\n')
+	# damages 2 ####
+	lModLoss <- lModPred0sta - lModPred
+	lModLossRel <- lModLoss/lModPred
+	cat('.')
+	png(file.path('figures',figFolder,'3-relgdploss-withinModel.png'),width = plw, height = plh, units = plu, res = pld)
+	par(pch='.')
+	plot(regDF$sta,lModLossRel,
+			 xlim=c(0,8),
+			 col=adjustcolor(1,alpha.f = 0.05),
+			 # col=1,
+			 main='year relative GDP loss')
+	mtext(figFolder,3,0.5,cex = 0.7)
+	dev.off()
+	cat('.')
+	png(file.path('figures',figFolder,'3-relgdploss-withinModel-zoom.png'),width = plw, height = plh, units = plu, res = pld)
+	par(pch='.')
+	plot(0,0,
+			 xlim=c(0,8),ylim=c(-20,80),
+			 type='n',
+			 # col=1,
+			 xlab='STA',
+			 ylab='relative yearly GDP loss in %',
+			 main='year relative GDP loss within emp model')
 	abline(h=seq(-20,80,10),lty=2,col='gray')
 	abline(v=seq(0,8,1),lty=2,col='gray')
 	points(regDF$sta,lModLossRel*100,
