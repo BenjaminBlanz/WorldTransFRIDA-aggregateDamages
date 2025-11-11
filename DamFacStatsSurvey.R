@@ -2,22 +2,51 @@
 
 # Load Data ####
 
-DamFuc <- readRDS("/Users/CanKaraarslan/Library/Mobile Documents/com~apple~CloudDocs/Benjamin Blanz/Benjamin Data Set 2/1756737438341_asRegDF.RDS")
-
 # Packages ##########################################################################################
 
 for (p in c("plm","dplyr","sandwich","lmtest","flextable","stargazer","caret","future.apply","doParallel","foreach")) {if (!requireNamespace(p, quietly = TRUE)) install.packages(p)}
 if (!requireNamespace("gsynth", quietly = TRUE)) install.packages("gsynth")
-library(gsynth); library(plm); library(dplyr); library(sandwich); library(lmtest); library(flextable); library(stargazer); library(caret); library(future.apply)
+library(gsynth); library(flextable)
+library(plm); library(dplyr); library(sandwich); library(lmtest); library(stargazer); library(caret); library(future.apply)
 library(doParallel); library(foreach)
 
 # Filter for Collinear Variables (one of two is randomly dropped) ###################################
 
+cutoffPar <- 0.2
+
+DamFuc <- readRDS("data/asRegDF.RDS")
+DamFuc  <- DamFuc[,-which(colnames(DamFuc)%in%c('gdpGro','gdp_future_recession_counter','gdppcGroRt','gdp_nominal_gdp_growth_rate','ccs_storing_co2'))]
+
 num_ok  <- sapply(DamFuc, is.numeric) & sapply(DamFuc, sd, na.rm = TRUE) > 0 # We keep numeric vectors and sd greater zero
 R       <- cor(DamFuc[, num_ok, drop = FALSE], use = "pairwise.complete.obs")
-drops   <- setdiff(findCorrelation(R, cutoff = 0.90, names = TRUE), # (We can increase the cutoff value to 0.95 (cutoff=0.99) if we want more variables in the data frame.)
-                   c("gdp","l1gdp","sta","id","year")) # If we want to keep more variables for sure, we can add those here.
+drops   <- setdiff(findCorrelation(R, cutoff = cutoffPar, names = TRUE), # (We can increase the cutoff value to 0.95 (cutoff=0.99) if we want more variables in the data frame.)
+                   c("gdp","l1gdp","sta","id","year","l1gdp","l1sta",
+                   	"l2gdp","l2sta","l3gdp","l3sta","l10gdp","l10sta",
+                   	"l20gdp","l20sta","l30gdp","l30sta","l40gdp","l40sta")) # If we want to keep more variables for sure, we can add those here.
 DamFuc  <- DamFuc[, setdiff(names(DamFuc), drops), drop = FALSE]
+
+DamFuc$l1gdpXsta <- DamFuc$l1gdp * DamFuc$sta 
+DamFuc$l2gdpXsta <- DamFuc$l2gdp * DamFuc$sta 
+DamFuc$l3gdpXsta <- DamFuc$l3gdp * DamFuc$sta 
+DamFuc$l1gdpXl1sta <- DamFuc$l1gdp * DamFuc$l1sta 
+DamFuc$l1gdpXl2sta <- DamFuc$l1gdp * DamFuc$l2sta 
+DamFuc$l1gdpXl3sta <- DamFuc$l1gdp * DamFuc$l3sta
+DamFuc$l1gdp2 <- DamFuc$l1gdp^2
+DamFuc$l1gdp3 <- DamFuc$l1gdp^3
+DamFuc$sta2 <- DamFuc$sta^2
+DamFuc$sta3 <- DamFuc$sta^3
+DamFuc$l1sta2 <- DamFuc$l1sta^2
+DamFuc$l1sta3 <- DamFuc$l1sta^3
+DamFuc$l2sta2 <- DamFuc$l2sta^2
+DamFuc$l2sta3 <- DamFuc$l2sta^3
+DamFuc$l3sta2 <- DamFuc$l3sta^2
+DamFuc$l3sta3 <- DamFuc$l3sta^3
+DamFuc$l1gdpXl1sta2 <- DamFuc$l1gdp * DamFuc$l1sta2
+DamFuc$l1gdpXl2sta2 <- DamFuc$l1gdp * DamFuc$l2sta2 
+DamFuc$l1gdpXl3sta2 <- DamFuc$l1gdp * DamFuc$l3sta2
+
+cat(sprintf('After kicking out variables with multicolinearity of %0.1f%% or below we are left with %i variables.\n',
+						cutoffPar*100,ncol(DamFuc)-3))
 
 # Panel #############################################################################################
 
@@ -37,31 +66,52 @@ fml_base   <- mk_formula(y, c)
 
 # Model Selection via BIC #########################################################################
 
-anchor_vars <- intersect(c, c("sta","l1gdp")) # These variables are always part of the model. We can include those we want to have for sure.
+anchor_vars <- intersect(c, c("sta","sta2","l1gdp")) # These variables are always part of the model. We can include those we want to have for sure.
 pool        <- setdiff(c, anchor_vars)
-max_k <- min(3L, length(pool))  # I set it to 3, but in Levante we can set it higher. We have to be careful, because of the exponential combinatorics.
+max_k <- min(5L, length(pool))  # I set it to 3, but in Levante we can set it higher. We have to be careful, because of the exponential combinatorics.
 
 rhs_list <- unique(c(if (length(anchor_vars)) paste(anchor_vars, collapse = " + ") else NULL, unlist(lapply(1:max_k, function(k)
     apply(combn(pool, k), 2, function(cols) paste(c(anchor_vars, cols), collapse = " + "))), use.names = FALSE)))
 
-# Cluster Start and Stop
+cat(sprintf('Allowing models with up to %i covariates, we have a list of %i candidate models\n',
+						max_k, length(rhs_list)))
 
-n_workers <- max(1L, parallel::detectCores() - 1L)
-cl <- parallel::makeCluster(n_workers)
-doParallel::registerDoParallel(cl)
+# Cluster Start and Stop
+library(parallel)
+n_workers <- detectCores()
+chunkSize <- 100
 
 # We fit all candidates models in parallel and compute BIC
 
-fits <- foreach(rhs = rhs_list, .packages = c("plm")) %dopar% {
-  m <- tryCatch(
-    plm(as.formula(paste(y, "~", rhs)), data = pdata, model = "pooling"),  # We can change the model to FE or RE etc. and adjust it to the other methods
-    error = function(e) NULL)
-  if (is.null(m)) return(NULL)
-  r <- residuals(m); n <- sum(!is.na(r)); rss <- sum(r^2, na.rm = TRUE); k <- length(coef(m))
-  list(rhs = rhs, model = m, bic = n*log(rss/n) + k*log(n))
+parfun <- function(i){
+	rhs <- rhs_list[[i]]
+	m <- tryCatch(
+		plm(as.formula(paste(y, "~", rhs)), data = pdata, model = "pooling"),  # We can change the model to FE or RE etc. and adjust it to the other methods
+		error = function(e) NULL)
+	if (is.null(m)) return(NULL)
+	r <- residuals(m)
+	n <- sum(!is.na(r))
+	rss <- sum(r^2, na.rm = TRUE)
+	k <- length(coef(m))
+	# list(rhs = rhs, model = m, bic = n*log(rss/n) + k*log(n))
+	return(list(bic= -n*log(rss/n)+k*log(n)))
 }
 
-parallel::stopCluster(cl)
+cl <- makeForkCluster(min(detectCores(),length(rhs_list)/chunkSize))
+fits <- parLapplyLB(cl,1:length(rhs_list),parfun,chunk.size = 100)
+stopCluster(cl)
+
+# doParallel::registerDoParallel(cl)
+# fits <- foreach(rhs = rhs_list, .packages = c("plm")) %dopar% {
+#   m <- tryCatch(
+#     plm(as.formula(paste(y, "~", rhs)), data = pdata, model = "pooling"),  # We can change the model to FE or RE etc. and adjust it to the other methods
+#     error = function(e) NULL)
+#   if (is.null(m)) return(NULL)
+#   r <- residuals(m); n <- sum(!is.na(r)); rss <- sum(r^2, na.rm = TRUE); k <- length(coef(m))
+#   list(rhs = rhs, model = m, bic = n*log(rss/n) + k*log(n))
+# }
+# parallel::stopCluster(cl)
+
 
 # We keep the successful fits 
 fits <- Filter(Negate(is.null), fits)
@@ -69,7 +119,10 @@ stopifnot(length(fits) > 0L)
 
 # The "best of all" models is selected
 bics <- vapply(fits, `[[`, numeric(1), "bic")
-best <- fits[[ which.min(bics) ]]
+best.idx <- which.min(bics)
+
+bestModel <- plm(as.formula(paste(y, "~", rhs_list[[best.idx]])), data = pdata, model = "pooling")
+
 result.lst <- setNames(list(best$model), best$rhs)
 cat("Best RHS:", names(result.lst), "  BIC:", min(bics), "\n")
 
@@ -78,16 +131,23 @@ cat("Best RHS:", names(result.lst), "  BIC:", min(bics), "\n")
 POLS <- plm(fml_base, data = pdata, model = "pooling")
 
 # Plot ################
-
+cfdata <- pdata
+cfdata[,grep('sta$',colnames(cfdata))] <- 0
+damfac.lst <- list()
+years <- 2020:2149
+figFolder<-file.path('figures','damFacStatsSurvey')
+dir.create(figFolder,showWarnings = F,recursive = T)
 for(i in 1:length(result.lst)){
   model <- result.lst[[i]]
   pred <- predict(model)
-  cfPred <- predict(model,newdata = cfdat2)
+  cfPred <- predict(model,newdata = cfdata)
   moddiff <- cfPred-pred
   damfac <- moddiff/cfPred
   damfac.lst[[names(result.lst)[i]]] <- damfac
-  plot(c(pdat2$sta),c(damfac),pch=20,
+  png(file.path(figFolder,paste0('modelPOLS-',i,'.png')),400,400)
+  plot(c(pdata$sta),c(damfac),pch=20,
        main=names(result.lst)[i])
+  dev.off()
 }
 
 
