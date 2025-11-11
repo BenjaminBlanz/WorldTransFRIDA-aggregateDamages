@@ -1,189 +1,98 @@
-# Dam Fuc 101125
+# Dam Fuc 121125 b POLS only
 
-# Plan:
-# 1.We optimize the model under each estimation technique (estimator) using Hannan-Quin (HQ) and BIC. 
-#   We may use AIC only as a base, because the punishment factor does not change with the size of the data set n. 
-# 2.We use the different estimates for robustness checks.
-# 3.The "best" estimation technique can only be derived by argument and convincing robustness checks.
+# Load Data ####
 
-DamFuc <- readRDS("data/asRegDF.RDS")
+DamFuc <- readRDS("/Users/CanKaraarslan/Library/Mobile Documents/com~apple~CloudDocs/Benjamin Blanz/Benjamin Data Set 2/1756737438341_asRegDF.RDS")
 
-# Packages
-for (p in c("plm","dplyr","sandwich","lmtest","flextable","stargazer")) {if (!requireNamespace(p, quietly = TRUE)) install.packages(p)}
+# Packages ##########################################################################################
+
+for (p in c("plm","dplyr","sandwich","lmtest","flextable","stargazer","caret","future.apply","doParallel","foreach")) {if (!requireNamespace(p, quietly = TRUE)) install.packages(p)}
 if (!requireNamespace("gsynth", quietly = TRUE)) install.packages("gsynth")
-library(gsynth); library(plm); library(dplyr); library(sandwich); library(lmtest); library(flextable) ; library(stargazer)
+library(gsynth); library(plm); library(dplyr); library(sandwich); library(lmtest); library(flextable); library(stargazer); library(caret); library(future.apply)
+library(doParallel); library(foreach)
 
-# Panel
-pdat <- pdata.frame(DamFuc, index = c("id","year"))
+# Filter for Collinear Variables (one of two is randomly dropped) ###################################
 
-# Small data set
-pdat2 <- subset(pdat, !is.na(gdp) & !is.na(l1gdp) & !is.na(sta))
+num_ok  <- sapply(DamFuc, is.numeric) & sapply(DamFuc, sd, na.rm = TRUE) > 0 # We keep numeric vectors and sd greater zero
+R       <- cor(DamFuc[, num_ok, drop = FALSE], use = "pairwise.complete.obs")
+drops   <- setdiff(findCorrelation(R, cutoff = 0.90, names = TRUE), # (We can increase the cutoff value to 0.95 (cutoff=0.99) if we want more variables in the data frame.)
+                   c("gdp","l1gdp","sta","id","year")) # If we want to keep more variables for sure, we can add those here.
+DamFuc  <- DamFuc[, setdiff(names(DamFuc), drops), drop = FALSE]
 
-# counter factrual data set
-cfdat2 <- pdat2
-cfdat2[,grep('sta$',colnames(cfdat2))] <- 0
-cfdat <- pdat
-cfdat[,grep('sta$',colnames(cfdat))] <- 0
-years <- 2020:2149
+# Panel #############################################################################################
 
-# Vector of Covariates which can easily be modified.
-y <- "gdp"                                  
-c <- c("sta","l1gdp")                       # for easy editing. Just add the covariates here <------------------------------
+stopifnot(all(c("id","year") %in% names(DamFuc)))     # We make sure, indices exist.
+pdata   <- pdata.frame(DamFuc, index = c("id","year"))
 
-# Function for easy-use in all regressions. We create right-hand-side (rhs) and formula
+# Dependent Variable and Vector of Covariates 
+
+y <- "gdp"
+c <- setdiff(names(DamFuc), c("id","year", y))
+
+# Function for easy-use in all regressions. We create right-hand-side (rhs) and formula #############
+
 mk_rhs     <- function(vars) if (length(vars)==0) "1" else paste(vars, collapse = " + ")
 mk_formula <- function(y, vars) as.formula(paste(y, "~", mk_rhs(vars)))
 fml_base   <- mk_formula(y, c)
 
-result.lst <- list()
-damfac.lst <- list()
+# Model Selection via BIC #########################################################################
 
-# POLS (pooled OLS)
-result.lst$POLS <- POLS <- plm(fml_base, data = pdat2, model = "pooling")
+anchor_vars <- intersect(c, c("sta","l1gdp")) # These variables are always part of the model. We can include those we want to have for sure.
+pool        <- setdiff(c, anchor_vars)
+max_k <- min(3L, length(pool))  # I set it to 3, but in Levante we can set it higher. We have to be careful, because of the exponential combinatorics.
 
-# POLS.pred <- predict(POLS)
-# plot(c(pdat2$year),c(POLS.pred),pch=20)
-# points(c(pdat2$year),c(POLS.pred),pch=20)
-# points(c(pdat2$year),c(POLS.cfPred),pch=20,col='red')
-# plot(c(pdat2$year),c(pdat2$sta),pch=20)
-# points(c(pdat2$year),c(pdat2$sta),pch=20)
-# POLS.cfPred <- predict(POLS,newdata = cfdat2)
-# points(rep(years,each=nrow(POLS.cfpred)),c(POLS.cfpred),pch=20,col='red')
-# 
-# POLS.diff <- POLS.cfPred-POLS.pred
-# plot(c(pdat2$year),c(POLS.diff),pch=20)
-# plot(c(pdat2$sta),c(POLS.diff),pch=20)
-# 
-# POLS.damfac <- POLS.diff/POLS.cfPred
-# plot(c(pdat2$year),c(POLS.damfac),pch=20)
-# points(c(pdat2$year),c(POLS.damfac),pch=20)
-# plot(c(pdat2$sta),c(POLS.damfac),pch=20)
+rhs_list <- unique(c(if (length(anchor_vars)) paste(anchor_vars, collapse = " + ") else NULL, unlist(lapply(1:max_k, function(k)
+    apply(combn(pool, k), 2, function(cols) paste(c(anchor_vars, cols), collapse = " + "))), use.names = FALSE)))
 
+# Cluster Start and Stop
 
+n_workers <- max(1L, parallel::detectCores() - 1L)
+cl <- parallel::makeCluster(n_workers)
+doParallel::registerDoParallel(cl)
 
-# cluster Robust POLS
-RPOLS <- coeftest(POLS, vcov = vcovHC(POLS, method = "arellano", type = "HC1", cluster = "group"))
+# We fit all candidates models in parallel and compute BIC
 
-# Fixed Effects (FE)
-result.lst$FE <- FE <- plm(fml_base, data = pdat2, model = "within")
+fits <- foreach(rhs = rhs_list, .packages = c("plm")) %dopar% {
+  m <- tryCatch(
+    plm(as.formula(paste(y, "~", rhs)), data = pdata, model = "pooling"),  # We can change the model to FE or RE etc. and adjust it to the other methods
+    error = function(e) NULL)
+  if (is.null(m)) return(NULL)
+  r <- residuals(m); n <- sum(!is.na(r)); rss <- sum(r^2, na.rm = TRUE); k <- length(coef(m))
+  list(rhs = rhs, model = m, bic = n*log(rss/n) + k*log(n))
+}
 
-# Random Effects (RE)
-result.lst$RE <- RE <- plm(fml_base, data = pdat2, model = "random")
+parallel::stopCluster(cl)
 
-# First Differencing (FD)
-result.lst$FD <- FD <- plm(fml_base, data = pdat2, model = "fd")
+# We keep the successful fits 
+fits <- Filter(Negate(is.null), fits)
+stopifnot(length(fits) > 0L)
 
-# first set of plots ####
+# The "best of all" models is selected
+bics <- vapply(fits, `[[`, numeric(1), "bic")
+best <- fits[[ which.min(bics) ]]
+result.lst <- setNames(list(best$model), best$rhs)
+cat("Best RHS:", names(result.lst), "  BIC:", min(bics), "\n")
+
+# POLS (pooled OLS) ################################################################################
+
+POLS <- plm(fml_base, data = pdata, model = "pooling")
+
+# Plot ################
+
 for(i in 1:length(result.lst)){
-	model <- result.lst[[i]]
-	pred <- predict(model)
-	cfPred <- predict(model,newdata = cfdat2)
-	moddiff <- cfPred-pred
-	damfac <- moddiff/cfPred
-	damfac.lst[[names(result.lst)[i]]] <- damfac
-	plot(c(pdat2$sta),c(damfac),pch=20,
-			 main=names(result.lst)[i])
+  model <- result.lst[[i]]
+  pred <- predict(model)
+  cfPred <- predict(model,newdata = cfdat2)
+  moddiff <- cfPred-pred
+  damfac <- moddiff/cfPred
+  damfac.lst[[names(result.lst)[i]]] <- damfac
+  plot(c(pdat2$sta),c(damfac),pch=20,
+       main=names(result.lst)[i])
 }
 
-# Twice First Differenced (TFD) ####
 
-## 1) We create twice-differenced columns for y and all covariates in c ####
-vars_tfd <- c(y, c)
-for (v in vars_tfd) {pdat2[[paste0(v, "_tfd")]] <- diff(pdat2[[v]], differences = 2)}
 
-## 2) We build the TFD vectors ####
-y_tfd  <- paste0(y, "_tfd")
-ctfd   <- paste0(c, "_tfd")
 
-## 3) We drop rows with NAs, created because of differencing ####
-keep <- complete.cases(pdat2[, c(y_tfd, ctfd)])
-pdat_tfd <- pdat2[keep, ]
 
-## 4) TFD regression ####
-TFD <- plm(as.formula(paste(y_tfd, "~", paste(ctfd, collapse = " + "))),
-           data = pdat_tfd, model = "pooling")
 
-# Two-Way Fixed Effects (TFE) ####
-TFE <- plm(fml_base, data = pdat2, model = "within", effect = "twoways")
-
-# Interactive Fixed Effects (IFE), Two-Factor Interactive Fixed Effects (IFE2), Three-Factor Interactive Fixed Effects (IFE3)
-.pick <- function(x, nm) if (nm %in% names(x)) unname(x[[nm]]) else NA_real_
-
-run_ife <- function(r) {
-	fit <- interFE(fml_base, data = as.data.frame(pdat2), index = c("id","year"), r = r,se = TRUE, nboots = 200, 
-                                       seed= 123,normalize = FALSE)
-	ET  <- fit$est.table
-	cf  <- setNames(ET[, "Coef"], rownames(ET))
-	se  <- setNames(ET[, "S.E."], rownames(ET))
-	  
-	# vectors in the order of intercept then covariates
-	cf_vec <- c(.pick(cf, "_const"), sapply(c, function(v) .pick(cf, v)))
-	se_vec <- c(.pick(se, "_const"), sapply(c, function(v) .pick(se, v)))
-  
-	list(model = fit, coef = cf, se = se, coef_vec = cf_vec, se_vec = se_vec)
-}
-
-# We fit the IFEs
-IFE1_out <- run_ife(1)
-IFE2_out <- run_ife(2)
-IFE3_out <- run_ife(3)
-
-IFE  <- IFE1_out$model
-IFE2 <- IFE2_out$model
-IFE3 <- IFE3_out$model
-
-# Coefficient and SEs for Stargazer
-ife_coef_vec  <- IFE1_out$coef_vec
-ife_se_vec    <- IFE1_out$se_vec
-
-ife2_coef_vec <- IFE2_out$coef_vec
-ife2_se_vec   <- IFE2_out$se_vec
-
-ife3_coef_vec <- IFE3_out$coef_vec
-ife3_se_vec   <- IFE3_out$se_vec
-
-# Rolling Fixed Effects (RFE)
-
-RFE <- rfe_mde(formula = fml_base, data = pdat2, index = c("id","year"), j = 5,vcov_type = "HC1", cluster = "group")
-
-# helper to safe getter
-g <- function(x, nm) if (!is.null(x) && nm %in% names(x)) unname(x[[nm]]) else NA_real_
-
-# pulls fields in a way that works for both return shapes:
-get_first <- function(...) { L <- list(...); for (z in L) if (!is.null(z)) return(z); NULL }
-
-# rfe output 
-beta_raw <- get_first(RFE$beta_rfe, RFE$beta)
-se_raw   <- get_first(RFE$se_rfe,   RFE$se)
-
-# coefficient names to align on
-coef_names <- if (!is.null(RFE$coef_names)) RFE$coef_names else names(beta_raw)
-
-# We name the vectors 
-if (!is.null(beta_raw) && !is.null(coef_names)) {rfe_coef_named <- setNames(beta_raw, coef_names)
-} else {rfe_coef_named <- beta_raw}
-if (!is.null(se_raw) && !is.null(coef_names)) {rfe_se_named <- setNames(se_raw, coef_names)
-} else {rfe_se_named <- se_raw}
-
-# We build vectors for stargazer
-rfe_coef_vec <- c(NA_real_, sapply(c, function(v) g(rfe_coef_named, v)))
-rfe_se_vec   <- c(NA_real_, sapply(c, function(v) g(rfe_se_named,   v)))
-
-rfe_coef_vec <- unname(rfe_coef_vec)
-rfe_se_vec   <- unname(rfe_se_vec)
-
-# Table 
-stargazer(POLS, RPOLS, FE, RE, FD, TFD, TFE, POLS, POLS, POLS, POLS,
-          type = "text",
-          title = "Vergleich von Panel-Verfahren",
-          dep.var.labels.include = FALSE,
-          column.labels = c("POLS","RPOLS","FE","RE","FD","TFD","TFE","IFE1","IFE2","IFE3","RFE"),
-          coef = list(NULL,NULL,NULL,NULL,NULL,NULL,NULL, 
-                      ife_coef_vec, ife2_coef_vec, ife3_coef_vec, rfe_coef_vec),
-          se   = list(NULL,NULL,NULL,NULL,NULL,NULL,NULL,
-                      ife_se_vec,   ife2_se_vec,   ife3_se_vec, rfe_se_vec),
-          keep.stat = c("n"),
-          align = TRUE, no.space = TRUE, header = FALSE)
-
-# Rolling Two-Way Fixed Effects (RTFE)
 
