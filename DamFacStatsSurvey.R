@@ -4,9 +4,9 @@
 
 # Packages ##########################################################################################
 
-for (p in c("plm","dplyr","sandwich","lmtest","flextable","stargazer","caret","future.apply","doParallel","foreach")) {if (!requireNamespace(p, quietly = TRUE)) install.packages(p)}
-if (!requireNamespace("gsynth", quietly = TRUE)) install.packages("gsynth")
-library(gsynth); library(flextable)
+# for (p in c("plm","dplyr","sandwich","lmtest","flextable","stargazer","caret","future.apply","doParallel","foreach")) {if (!requireNamespace(p, quietly = TRUE)) install.packages(p)}
+# if (!requireNamespace("gsynth", quietly = TRUE)) install.packages("gsynth")
+# library(gsynth); library(flextable)
 library(plm); library(dplyr); library(sandwich); library(lmtest); library(stargazer); library(caret); library(future.apply)
 library(doParallel); library(foreach)
 
