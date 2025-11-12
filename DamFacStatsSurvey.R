@@ -146,7 +146,11 @@ bestModels$bic <- plm(as.formula(paste(y, "~", rhs_list[[best.idx.bic]])), data 
 for(i in 1:length(bestModels)){
 	cat(sprintf("Best RHS by %s: %s\n", names(bestModels)[i], as.character(bestModels[[i]]$formula)[3]))
 }
-# Plot ################
+# Plot 1 ####
+plot.h <- plot.w <- 10
+plot.unit <- 'cm'
+plot.dpi <- '300'
+
 figFolder<-file.path('figures','damFacStatsSurvey',paste0('upTo',max_k,'Covariates'))
 dir.create(figFolder,showWarnings = F,recursive = T)
 cfdata <- pdata
@@ -161,8 +165,11 @@ for(i in 1:length(bestModels)){
 	cfPred <- predict(bestModels[[i]],newdata = cfdata)
 	moddiff <- cfPred-pred
 	damfacs[[name]] <- moddiff/cfPred
-	png(file.path(figFolder,paste0('modelPOLS-',name,'.png')),400,400)
+	png(file.path(figFolder,paste0('modelPOLS-',name,'.png')),
+			width = plot.w,height = plot.h,units = plot.unit,res = plot.dpi)
 	plot(c(pdata$sta),c(damfacs[[name]]),pch=20,
 	     main=name)
 	dev.off()
 }
+
+# model 2 ####
