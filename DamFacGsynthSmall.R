@@ -1,6 +1,5 @@
 # Dam Fuc Gsynth small Version 
 
-DamFuc <- readRDS("data/asRegDF.RDS")
 
 # Packages ##########################################################################################
 
@@ -11,6 +10,7 @@ library(doParallel); library(foreach); library(panelView)
 
 # Filter for Collinear Variables (one of two is randomly dropped) ###################################
 
+DamFuc <- readRDS("data/asRegDF.RDS")
 num_ok  <- sapply(DamFuc, is.numeric) & sapply(DamFuc, sd, na.rm = TRUE) > 0 # We keep numeric vectors and sd greater zero
 R       <- cor(DamFuc[, num_ok, drop = FALSE], use = "pairwise.complete.obs")
 drops   <- setdiff(findCorrelation(R, cutoff = 0.90, names = TRUE), # (We can increase the cutoff value to 0.95 (cutoff=0.99) if we want more variables in the data frame.)
