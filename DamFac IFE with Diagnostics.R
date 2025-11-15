@@ -60,7 +60,7 @@ sta_cols <- grepl("sta", names(cfdat), ignore.case = TRUE) # We detect all sta s
 if (any(sta_cols)) {cfdat[, sta_cols] <- 0}                # We set sta s equal to zero
 
 ## Prediction ####
-# We define a predictor function because we cannot use predict() for a gsynth object
+# We define a predictor function
 ## Predictor Function ####
 
 predict_IFE <- function(model, data, formula, id_col = "id", time_col = "year") { # We assign the prediction function to "predict_IFE"
