@@ -16,18 +16,23 @@ if(!exists('predPivot')){
 if(!exists('readData')){
 	readData <- TRUE
 }
+if(!exists('readData')){
+	readLocalData <- TRUE
+}
 makePredict <- TRUE
 makeDFmod <- F
 
 
 # read data ####
-if(readData){
+if(readLocalData){
+	regDF <- readRDS('data/asRegDF.RDS')
+} else if(readData){
 	cat('reading data...')
-	# on my machine
-	# baselineFolder <- file.path('workOutput','determineAggDam_Baseline-S20000-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off',
-	# 														'detectedParmSpace','PerVarFiles-RDS')
-	# on levante
-	baselineFolder <- file.path('/work/mh0033/b383346/WorldTransFrida-Uncertainty/workOutput/UA_EMBv6Try2_nS100000/detectedParmSpace/PerVarFiles-RDS')
+	# 20k
+	baselineFolder <- file.path('../WorldTransFrida-Uncertainty/workOutput','determineAggDam_Baseline-S20000-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off',
+															'detectedParmSpace','PerVarFiles-RDS')
+	# emb 100k
+	# baselineFolder <- file.path('/work/mh0033/b383346/WorldTransFrida-Uncertainty/workOutput/FRoL_UATry2-S100000-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off-/detectedParmSpace/PerVarFiles-RDS')
 	
 	gdp <- readRDS(file.path(baselineFolder,'gdp_real_gdp_in_2021c.RDS'))
 	gdp <- gdp[complete.cases(gdp),] # drop incomplete runs
@@ -94,6 +99,34 @@ if(readData){
 	for(year in years[-((nyear-2):nyear)]){
 		l3gdp[,as.character(year+3)] <- gdp[,as.character(year)]
 	}
+	# 10 lagged gdp ####
+	cat('.')
+	l10gdp <- gdp
+	l10gdp[,as.character(years[1:10])] <- NA
+	for(year in years[-((nyear-9):nyear)]){
+		l10gdp[,as.character(year+10)] <- gdp[,as.character(year)]
+	}
+	# 20 lagged gdp ####
+	cat('.')
+	l20gdp <- gdp
+	l20gdp[,as.character(years[1:20])] <- NA
+	for(year in years[-((nyear-19):nyear)]){
+		l20gdp[,as.character(year+20)] <- gdp[,as.character(year)]
+	}
+	# 30 lagged gdp ####
+	cat('.')
+	l30gdp <- gdp
+	l30gdp[,as.character(years[1:30])] <- NA
+	for(year in years[-((nyear-29):nyear)]){
+		l30gdp[,as.character(year+30)] <- gdp[,as.character(year)]
+	}
+	# 40 lagged gdp ####
+	cat('.')
+	l40gdp <- gdp
+	l40gdp[,as.character(years[1:40])] <- NA
+	for(year in years[-((nyear-39):nyear)]){
+		l40gdp[,as.character(year+40)] <- gdp[,as.character(year)]
+	}
 	# future GDP ####
 	cat('.')
 	fgdp <- gdp
@@ -122,6 +155,34 @@ if(readData){
 	for(year in years[-((nyear-2):nyear)]){
 		l3sta[,as.character(year+3)] <- sta[,as.character(year)]
 	}
+	# 10 lagged STA ####
+	cat('.')
+	l10sta <- sta
+	l10sta[,as.character(years[1:10])] <- NA
+	for(year in years[-((nyear-9):nyear)]){
+		l10sta[,as.character(year+10)] <- sta[,as.character(year)]
+	}
+	# 20 lagged STA ####
+	cat('.')
+	l20sta <- sta
+	l20sta[,as.character(years[1:20])] <- NA
+	for(year in years[-((nyear-19):nyear)]){
+		l20sta[,as.character(year+20)] <- sta[,as.character(year)]
+	}
+	# 30 lagged STA ####
+	cat('.')
+	l30sta <- sta
+	l30sta[,as.character(years[1:30])] <- NA
+	for(year in years[-((nyear-29):nyear)]){
+		l30sta[,as.character(year+30)] <- sta[,as.character(year)]
+	}
+	# 40 lagged STA ####
+	cat('.')
+	l40sta <- sta
+	l40sta[,as.character(years[1:40])] <- NA
+	for(year in years[-((nyear-39):nyear)]){
+		l40sta[,as.character(year+40)] <- sta[,as.character(year)]
+	}
 	# future STA ####
 	cat('.')
 	fsta <- sta
@@ -133,8 +194,9 @@ if(readData){
 	
 	# restructure data for regresssion ####
 	cat('restructuring data...')
-	regDFColnames <- c('id','year','sta','fsta','l1sta','l2sta','l3sta',
-										 'gdp','l1gdp','l2gdp','l3gdp','fgdp','rgdp','gdppc','gdpGro','gdpGroRt','gdppcGro','gdppcGroRt',
+	regDFColnames <- c('id','year','sta','fsta','l1sta','l2sta','l3sta','l10sta','l20sta','l30sta','l40sta',
+										 'gdp','l1gdp','l2gdp','l3gdp','l10gdp','l20gdp','l30gdp','l40gdp',
+										 'fgdp','rgdp','gdppc','gdpGro','gdpGroRt','gdppcGro','gdppcGroRt',
 										 'pop','edem','esup','esht','inf','prinv','puinv')
 	regDF <- matrix(NA,nrow=nid*nyear,ncol=length(regDFColnames))
 	colnames(regDF) <- regDFColnames
@@ -145,10 +207,18 @@ if(readData){
 	regDF[,'l1sta'] <- unname(unlist(l1sta[,-1]))
 	regDF[,'l2sta'] <- unname(unlist(l2sta[,-1]))
 	regDF[,'l3sta'] <- unname(unlist(l3sta[,-1]))
+	regDF[,'l10sta'] <- unname(unlist(l10sta[,-1]))
+	regDF[,'l20sta'] <- unname(unlist(l20sta[,-1]))
+	regDF[,'l30sta'] <- unname(unlist(l30sta[,-1]))
+	regDF[,'l40sta'] <- unname(unlist(l40sta[,-1]))
 	regDF[,'gdp'] <- unname(unlist(gdp[,-1]))
 	regDF[,'l1gdp'] <- unname(unlist(l1gdp[,-1]))
 	regDF[,'l2gdp'] <- unname(unlist(l2gdp[,-1]))
 	regDF[,'l3gdp'] <- unname(unlist(l3gdp[,-1]))
+	regDF[,'l10gdp'] <- unname(unlist(l3gdp[,-1]))
+	regDF[,'l20gdp'] <- unname(unlist(l3gdp[,-1]))
+	regDF[,'l30gdp'] <- unname(unlist(l3gdp[,-1]))
+	regDF[,'l40gdp'] <- unname(unlist(l3gdp[,-1]))
 	regDF[,'fgdp'] <- unname(unlist(fgdp[,-1]))
 	regDF[,'rgdp'] <- unname(unlist(rgdp[,-1]))
 	regDF[,'gdpGro'] <- unname(unlist(gdpGro[,-1]))
@@ -172,9 +242,11 @@ if(readData){
 	gc(verbose = F)
 	# consider drop early years as burn in
 	# regDF <- regDF[regDF$year>=2050,]
-	nobs <- nrow(regDF)
+	cat('saving regDF...')
+	saveRDS(regDF,file.path('data/asRegDF.RDS'))
 	cat('done\n')
 }
+nobs <- nrow(regDF)
 
 # data vis ####
 cat('data vis...')
@@ -214,7 +286,7 @@ cat('empiric model...')
 # regular model
 # lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree), data=regDF)
 
-# lMod <- lm(gdp ~ poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
+lMod <- lm(gdp ~ poly(l1gdp,l2gdp,l3gdp,sta,l1sta,l2sta,l3sta,degree=degree), data=regDF)
 
 # lMod <- lm(gdp ~ poly(l1gdp,sta,pop,esht,inf,prinv,puinv,degree=degree), data=regDF)
  
@@ -244,8 +316,8 @@ cat('empiric model...')
 # lMod <- lm(gdp ~ poly(l1gdp,sta,degree=degree) + poly(l1gdp,pop,esht,inf,prinv,puinv,degree=covDegree), data=regDF)
 #fixed effects time trends
 # lMod <- lm(fgdp ~ factor(id) + factor(id):year + poly(gdp,l1gdp,l2gdp,fsta,sta,l1sta,l2sta,degree=degree), data=regDF)
-library(fixest)
-lMod <- feols(fgdp ~ gdp + gdp^2+fsta*gdp+fsta^2*gdp|id[gdp], data=regDF)
+# library(fixest)
+# lMod <- feols(fgdp ~ gdp + gdp^2+fsta*gdp+fsta^2*gdp|id[gdp], data=regDF)
 
 cat('done\n')
 cat('diagnostic plots')
