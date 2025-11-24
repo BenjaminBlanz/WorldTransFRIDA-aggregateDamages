@@ -88,23 +88,19 @@ pred_obs_df <- predict_IFE(IFE_fit, DamFuc, fml_base) # Prediction of Observed
 pred_cf_df  <- predict_IFE(IFE_fit, cfdat,  fml_base) # Prediction of Counterfactual
 
 ## Difference relative to Counterfactual, Relative Damage ####
-### We merge the data ####
 
-pred_merged <- merge( pred_obs_df, pred_cf_df, 
-                      by = c("id","year"), suffixes = c("_obs","_cf"), all = FALSE) # We merge the data and add the corresponding suffixes.
+key_obs <- paste(pred_obs_df$id, pred_obs_df$year, sep = "_") # We combine the vectors by elements and create id_year for the observations.
+key_cf <- paste(pred_cf_df$id, pred_cf_df$year, sep = "_")    # Same for the counterfactuals.
+key_dam <- paste(DamFuc$id, DamFuc$year, sep = "_")           
 
-### We take sta for the x-axis ####
+idx_cf <- match(key_obs, key_cf)      # We match the indices of the observed units with the counterfactual.
+idx_sta <- match(key_obs, key_dam)    # Find for every i in key_obs the position of it in key_dam.
+sta_vec <- DamFuc$sta[idx_sta]        # We take the sta values from DamFac at the positions indicated in idx_sta, thus, where key_obs and key_dam intersect. 
+                                      # So, we reorder the sta values such that these fit the order of the predicted values.
+# Damage Factor
+damage <- (pred_cf_df$pred[idx_cf] - pred_obs_df$pred) / pred_cf_df$pred[idx_cf] 
 
-sta_join <- DamFuc[, c("id","year","sta")]                                          # We take the three columns of DamFuc
-pred_merged <- merge(pred_merged, sta_join, by = c("id","year"), all.x = TRUE)      # Our sta joins the observed and counterfactual predicted values 
-
-### Damage Function ####
-
-with(pred_merged, {damage <<- (pred_cf - pred_obs) / pred_cf})                      # Our damage is defined outside the local block into the global environment
-
-### Guard against non-finite values ####
-# We only keep those rows that have numeric sta and damage and where the denominator of our damage factor is not zero
-ok <- is.finite(pred_merged$sta) & is.finite(damage) & (pred_merged$pred_cf != 0)   
+ok <- is.finite(sta_vec) & is.finite(damage) & (pred_cf_df$pred[idx_cf] != 0)
 
 ### Final Scatter Plot ####
 par(family = "Times New Roman", mgp = c(2, 0.8, 0))
