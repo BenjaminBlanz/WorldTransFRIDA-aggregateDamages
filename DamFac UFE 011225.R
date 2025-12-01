@@ -32,7 +32,7 @@ infl_long <- infl_long %>% mutate(year = as.integer(year))
 DamFuc <- temp_long %>% left_join(gdp_long, by = c("id","year")) %>% left_join(infl_long, by = c("id","year")) %>% 
   arrange(id, year)
 
-# interFE() doesn't work with missing data, thus, I take a random draw without missing values
+# Random Draw
 
 set.seed(123)
 DamFuc <- DamFuc %>% drop_na()
@@ -73,7 +73,7 @@ fml_base   <- mk_formula(y, c)
 
 ### Ich habe die Modelwahl via BIC erstmal ausgelassen ------------------------------------
 
-# Unit Fixed Effects (Name IFE kept only at the moment)
+# Unit Fixed Effects
 
 UFE_fit<- plm(
   formula = fml_base,
