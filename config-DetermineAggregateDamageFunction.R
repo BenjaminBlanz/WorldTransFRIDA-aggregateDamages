@@ -6,11 +6,14 @@ location.fridaUncertaintyWD <- '../WorldTransFrida-Uncertainty'
 # the number of samples to use for the damage function
 numSample <- 2e4
 
+# The number of sta timeseries to pull from emb for running damages
+numSTAts <- 10
+
 # The first STA has to be 0 
 STAs <- c(0,1,2,3)
 
 # time windows for calculating mean/median damages
-timeWindows <- list()
+timeWindows <- list() 
 timeWindows[[1]] <- c(1981,1990)
 timeWindows[[2]] <- c(1991,2000)
 timeWindows[[3]] <- c(2001,2010)
