@@ -187,10 +187,7 @@ if(file.exists(dataForDamFacFile)){
 
 # Data plot ####
 fig.dir <- 'figures/forcedSTAts'
-fig.w <- 15
-fig.h <- 15
-fig.res <- 300
-fig.u <- 'cm'
+
 
 hist2d <- function(x,y=NULL,xbreaks=NULL,ybreaks=NULL,
 									 col='black',
@@ -317,14 +314,6 @@ addCountLegend <- function(xleft,ybottom,xright,ytop,countBreaks,countAlpa,
 }
 
 dir.create(fig.dir,F,T)
-staCols <- rainbow(numSTAts*3+1)[(numSTAts*2+1):(numSTAts*3)]
-countAlpha <- seq(0.4,1,length.out=20)
-countBreaks <- c(0,1e-10,exp(1:(length(countAlpha)))[-1]/exp(length(countAlpha)))
-yearBreaks <- seq(1979.5,2150.5,1)
-gdpBreaks <- seq(0,2e6,length.out=500)
-staIDbreaks <- 0.5:(numSTAts+0.5)
-staBreaks <- seq(0,max(dataForDamFac$STA,na.rm=T),length.out=200)
-staBreaksCol <- seq(0,max(dataForDamFac$STA,na.rm=T),length.out=length(staCols)+1)
 
 cat('plotting countAlpha...')
 png(file.path(fig.dir,'0-countVsAlpha.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
