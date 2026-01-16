@@ -40,7 +40,7 @@ fig.res <- 300
 fig.u <- 'cm'
 
 staCols <- rainbow(numSTAts*3+1)[(numSTAts*2+1):(numSTAts*3)]
-countAlpha <- seq(0.4,1,length.out=20)
+countAlpha <- seq(0.3,1,length.out=20)
 countBreaks <- c(0,1e-10,exp(1:(length(countAlpha)))[-1]/exp(length(countAlpha)))
 yearBreaks <- seq(1979.5,2150.5,1)
 gdpBreaks <- seq(0,2e6,length.out=500)
