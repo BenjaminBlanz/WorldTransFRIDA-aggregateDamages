@@ -18,9 +18,9 @@ writeSTAForcingTS <- function(outputLocation,staTimeseriesID){
 	return(filename)
 }
 
-dataForDamFacFile <- file.path('outputData',paste('dataForDamFac',configStr,'.RDS',sep='-'))
+dataForDamFacFile <- file.path('outputData',paste0('dataForDamFac-',configStr,'.RDS'))
 
-if(exists(dataForDamFacFile)){
+if(file.exists(dataForDamFacFile)){
 	cat(paste0('dataForDamFac exists: ',dataForDamFacFile,'\nreading...'))
 	dataForDamFac <- readRDS(dataForDamFacFile)
 	cat('done\n')
@@ -180,7 +180,7 @@ if(exists(dataForDamFacFile)){
 	cat('Saving data frame...RDS...')
 	saveRDS(dataForDamFac,dataForDamFacFile)
 	cat('csv...')
-	write.table(dataForDamFac,file.path('outputData',paste('dataForDamFac',configStr,'.csv',sep='-')),
+	write.table(dataForDamFac,file.path('outputData',paste('dataForDamFac-',configStr,'.csv')),
 							sep = ',',row.names = F)
 	cat('done\n')
 }
@@ -194,12 +194,12 @@ fig.u <- 'cm'
 
 hist2d <- function(x,y=NULL,xbreaks=NULL,ybreaks=NULL,
 									 col='black',
-									 countAlpha = seq(1,0,length.out=10),
-									 countbreaks=NULL,
+									 countAlpha = seq(0,1,length.out=10),
+									 countBreaks=NULL,
 									 z=NULL,zbreaks=NULL,zcols=NULL,
 									 plot = T,
 									 returnCounts = F,
-									 dens=F,verbose=T,){
+									 dens=F,verbose=T){
 	if(is.null(xbreaks)){
 		xbreaks <- hist(x,plot=F)$breaks
 	}
@@ -238,23 +238,25 @@ hist2d <- function(x,y=NULL,xbreaks=NULL,ybreaks=NULL,
 		for(x.i in 1:(length(xbreaks)-1)){
 			histDat <- hist(xy$y[xy$x>=xbreaks[x.i] & xy$x<xbreaks[x.i+1]],
 											breaks=c(-Inf,ybreaks,Inf),plot=F)
-			counts[x.i,] <- histDat$counts[c(-1,-length(ybreaks+2))]
+			counts[x.i,] <- histDat$counts[c(-1,-(length(ybreaks)+1))]
 		}
 		if(dens){
 			counts <- counts/nrow(xy)
 		}
 	}
 	if(plot){
-		if(is.null(countbreaks)){
-			if(length(dim(counts)==3)){
-				maxCounts <- max(colSums(counts,na.rm=T,dims=2))
-				zcols <- col2rgb(zcols)
-			} else {
-				maxCounts <- max(counts)
-			}
-			countbreaks <- c(0,sqrt(seq(1,maxCounts^2,length.out=length(countAlpha)+1)))
-		} else if(length(countbreaks)!=(length(countcols)+1)){
-			stop('Length of countcols has to be length of countbreaks minus one.\n')
+		if(length(dim(counts))==3){
+			maxCounts <- max(colSums(counts,na.rm=T,dims=2))
+			zcols <- col2rgb(zcols)
+		} else {
+			maxCounts <- max(counts)
+		}
+		if(is.null(countBreaks)){
+			countBreaks <- c(0,1,exp(1:(length(countAlpha-1)))[-1]/exp(length(countAlpha-1))*maxCounts)
+		} else if(length(countBreaks)!=(length(countAlpha)+1)){
+			stop('Length of countAlpha has to be length of countbreaks minus one.\n')
+		} else if(max(countBreaks)<=maxCounts){
+			countBreaks <- countBreaks*maxCounts
 		}
 		for(x.i in 1:(length(xbreaks)-1)){
 			for(y.i in 1:(length(ybreaks)-1)){
@@ -271,9 +273,9 @@ hist2d <- function(x,y=NULL,xbreaks=NULL,ybreaks=NULL,
 					count <- counts[x.i,y.i]
 				}
 				if(count==0){
-					alpha <- 0	
+					alpha <- 0
 				} else {
-					alpha <- countAlpha[which(diff(count<=countbreaks)==1)]
+					alpha <- countAlpha[which(diff(count<=countBreaks)==1)]
 				}
 				rect(xbreaks[x.i],ybreaks[y.i],xbreaks[x.i+1],ybreaks[y.i+1],
 						 density=-1,
@@ -287,11 +289,53 @@ hist2d <- function(x,y=NULL,xbreaks=NULL,ybreaks=NULL,
 	}
 }
 
+addCountLegend <- function(xleft,ybottom,xright,ytop,countBreaks,countAlpa,
+													 maxCount,
+													 col='black',xpd=T){
+	countBreaks <- maxCount*countBreaks/max(countBreaks)
+	oldXpd <- par('xpd')
+	ystep <- (ytop-ybottom)/(1+length(countAlpha))
+	vertBuff <- ystep/2
+	xwidth <- xright-xleft
+	par(xpd=xpd)
+	rect(xleft,ybottom,xright,ytop,xpd=T,col='white')
+	for(i in 1:length(countAlpa)){
+		rect(xleft,
+				 ybottom+vertBuff+ystep*(i-1),
+				 xleft+xwidth*0.1,
+				 ybottom+vertBuff+ystep*i,
+				 col=adjustcolor(col,countAlpa[i]),
+				 border = 'white')
+	}
+	for(i in 1:length(countBreaks)){
+		text(xleft+xwidth*0.1,ybottom+vertBuff+ystep*(i-1),
+				 sprintf(' %1.2e',countBreaks[i]),
+				 adj=0)
+	}
+	rect(xleft,ybottom,xright,ytop,xpd=T)
+	par(xpd=oldXpd)
+}
+
 dir.create(fig.dir,F,T)
-staCols <- rainbow(numSTAts*2+1)[1:numSTAts]
-densAlpha <- (seq(0,1,length.out=20))^(1/2)
+staCols <- rainbow(numSTAts*3+1)[(numSTAts*2+1):(numSTAts*3)]
+countAlpha <- seq(0.4,1,length.out=20)
+countBreaks <- c(0,1e-10,exp(1:(length(countAlpha)))[-1]/exp(length(countAlpha)))
 yearBreaks <- seq(1979.5,2150.5,1)
-gdpBreaks <- seq(0,2e6,length.out=1000)
+gdpBreaks <- seq(0,2e6,length.out=500)
+staIDbreaks <- 0.5:(numSTAts+0.5)
+staBreaks <- seq(0,max(dataForDamFac$STA,na.rm=T),length.out=200)
+staBreaksCol <- seq(0,max(dataForDamFac$STA,na.rm=T),length.out=length(staCols)+1)
+
+cat('plotting countAlpha...')
+png(file.path(fig.dir,'0-countVsAlpha.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
+plot(countBreaks[-length(countBreaks)],countAlpha,pch=20,
+		 xlim=c(0,1),ylim=c(0,1))
+grid()
+addCountLegend(xleft = 0.9,ybottom = 0,xright = 1.1,ytop = 1,
+							 countBreaks = countBreaks,countAlpa = countAlpha,
+							 maxCount = 1)
+dev.off()
+cat('done\n')
 
 cat('plotting GDP...')
 png(file.path(fig.dir,'1-GDP.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
@@ -299,25 +343,60 @@ plot(0,0,type='n',
 		 xlim=range(dataForDamFac$year),ylim=c(0,2e6),
 		 xlab='Year',ylab='billion constant 2021 $',
 		 main='Real GDP')
-hist2d(x = dataForDamFac$year, y = dataForDamFac$GDP,
-			 xbreaks = yearBreaks, ybreaks = gdpBreaks)
+counts <- hist2d(x = dataForDamFac$year, y = dataForDamFac$GDP,
+			 xbreaks = yearBreaks, ybreaks = gdpBreaks,
+			 countAlpha = countAlpha, countBreaks = countBreaks,
+			 returnCounts = T)
+addCountLegend(xleft = 2140,ybottom = 0,xright = 2200,ytop = 2e6,
+							 countBreaks = countBreaks,countAlpa = countAlpha,
+							 maxCount = max(counts))
 dev.off()
 cat('done\n')
 
-staCounts <- array(NA,dim=c(length(yearBreaks)-1,length(gdpBreaks)-1,numSTAts))
+cat('plotting GDP per STAts')
 for(sta.i in 1:numSTAts){
-	staCounts[,,sta.i] <- hist2d(x = dataForDamFac$year[dataForDamFac$staid==sta.i],
-															 y = dataForDamFac$GDP[dataForDamFac$staid==sta.i],
-															 xbreaks = seq(1979.5,2150.5,1), ybreaks = seq(0,2e6,length.out=1000),
-															 returnCounts= T,plot = F)
+	cat('.')
+	png(file.path(fig.dir,paste0('1-GDP-STAtsID-',sta.i,'.png')),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
+	plot(0,0,type='n',
+			 xlim=range(dataForDamFac$year),ylim=c(0,2e6),
+			 xlab='Year',ylab='billion constant 2021 $',
+			 main=paste0('Real GDP forced with STAts ',sta.i))
+	hist2d(x = dataForDamFac$year[dataForDamFac$staID==sta.i],
+				 y = dataForDamFac$GDP[dataForDamFac$staID==sta.i],
+				 xbreaks = yearBreaks, ybreaks = gdpBreaks)
+	dev.off()
 }
+cat('done\n')
+
+cat('plotting GDP colored STAts...')
+png(file.path(fig.dir,'1-GDP-STAtsID-color.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
+plot(0,0,type='n',
+		 xlim=range(dataForDamFac$year),ylim=c(0,2e6),
+		 xlab='Year',ylab='billion constant 2021 $',
+		 main='Real GDP')
+hist2d(x = dataForDamFac$year, y = dataForDamFac$GDP,
+			 xbreaks = yearBreaks, ybreaks = gdpBreaks,
+			 z = dataForDamFac$staID,zbreaks = staIDbreaks,zcols = staCols)
+dev.off()
+cat('done\n')
+
+cat('plotting GDP colored STA...')
+png(file.path(fig.dir,'1-GDP-STA-color.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
+plot(0,0,type='n',
+		 xlim=range(dataForDamFac$year),ylim=c(0,2e6),
+		 xlab='Year',ylab='billion constant 2021 $',
+		 main='Real GDP')
+hist2d(x = dataForDamFac$year, y = dataForDamFac$GDP,
+			 xbreaks = yearBreaks, ybreaks = gdpBreaks,
+			 z = dataForDamFac$STA,zbreaks = staBreaksCol,zcols = staCols)
+dev.off()
+cat('done\n')
 
 cat('plotting STA...')
 png(file.path(fig.dir,'2-STA.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 plot(dataForDamFac$year[which(dataForDamFac$id==1)],
 		 dataForDamFac$STA[which(dataForDamFac$id==1)],
 		 col=staCols[dataForDamFac$staID[which(dataForDamFac$id==1)]],
-		 pch=20,
 		 xlab='Year',ylab='K',
 		 main='Surface Temperature Anomaly',
 		 pch=20)
@@ -327,9 +406,41 @@ cat('done\n')
 cat('plotting STA vs GDP...')
 dir.create(fig.dir,F,T)
 png(file.path(fig.dir,'3-GDPvsSTA.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
-plot(dataForDamFac$year,dataForDamFac$GDP,
-		 col=staCols[dataForDamFac$staID],
-		 xlab='Year',ylab='billion 2021 $',
-		 pch=20)
+plot(0,0,type='n',
+		 xlim=c(0,max(dataForDamFac$STA,na.rm=T)),ylim=c(0,2e6),
+		 xlab='Surface Temperature Anomaly K',ylab='GDP billion constant 2021 $',
+		 main='GDP vs STA')
+hist2d(x = dataForDamFac$STA, y = dataForDamFac$GDP,
+			 xbreaks = staBreaks, ybreaks = gdpBreaks)
 dev.off()
 cat('done\n')
+
+cat('plotting STA vs GDP per STAts')
+for(sta.i in 1:numSTAts){
+	cat('.')
+	png(file.path(fig.dir,paste0('1-GDPvsSTA-STAtsID-',sta.i,'.png')),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
+	plot(0,0,type='n',
+			 xlim=c(0,max(dataForDamFac$STA,na.rm=T)),ylim=c(0,2e6),
+			 xlab='Surface Temperature Anomaly K',ylab='GDP billion constant 2021 $',
+			 main=paste0('GDP vs STA for staID ',sta.i))
+	hist2d(x = dataForDamFac$STA[dataForDamFac$staID==sta.i],
+				 y = dataForDamFac$GDP[dataForDamFac$staID==sta.i],
+				 xbreaks = staBreaks, ybreaks = gdpBreaks)
+	dev.off()
+}
+cat('done\n')
+
+cat('plotting STA vs GDP...')
+dir.create(fig.dir,F,T)
+png(file.path(fig.dir,'3-GDPvsSTAcolByStaID.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
+plot(0,0,type='n',
+		 xlim=c(0,max(dataForDamFac$STA,na.rm=T)),ylim=c(0,2e6),
+		 xlab='Surface Temperature Anomaly K',ylab='GDP billion constant 2021 $',
+		 main='GDP vs STA')
+hist2d(x = dataForDamFac$STA, y = dataForDamFac$GDP,
+			 xbreaks = staBreaks, ybreaks = gdpBreaks,
+			 z = dataForDamFac$staID,zbreaks = staIDbreaks,zcols = staCols)
+dev.off()
+cat('done\n')
+
+# fit model ####
