@@ -18,11 +18,11 @@ writeSTAForcingTS <- function(outputLocation,staTimeseriesID){
 	return(filename)
 }
 
-dataForDamFacFile <- file.path('outputData',paste0('dataForDamFac-',configStr,'.RDS'))
+dataFile <- file.path('outputData',paste0('data-',configStr,'.RDS'))
 
-if(file.exists(dataForDamFacFile)){
-	cat(paste0('dataForDamFac exists: ',dataForDamFacFile,'\nreading...'))
-	dataForDamFac <- readRDS(dataForDamFacFile)
+if(file.exists(dataFile)){
+	cat(paste0('data exists: ',dataFile,'\nreading...'))
+	data <- readRDS(dataFile)
 	cat('done\n')
 } else {
 	# enter the uncertainty analysis directory
@@ -127,7 +127,7 @@ if(file.exists(dataForDamFacFile)){
 	# read STA data ####
 	timeshifts <- c(1,-1:-5,-10,-20)
 	nrowOutput <- numSample*numYears*numSTAts
-	dataForDamFac <- data.frame(id=numeric(nrowOutput),staID=numeric(nrowOutput),
+	data <- data.frame(id=numeric(nrowOutput),staID=numeric(nrowOutput),
 															year=numeric(nrowOutput),STA=numeric(nrowOutput),
 															GDP=numeric(nrowOutput))
 	timeshiftColNamesSTA <- timeshiftColNamesGDP <- c()
@@ -141,7 +141,7 @@ if(file.exists(dataForDamFacFile)){
 		}
 		timeshiftColNamesGDP[ts.i] <- colnames(newcolgdp)
 		timeshiftColNamesSTA[ts.i] <- colnames(newcolsta)
-		dataForDamFac<- cbind(dataForDamFac, newcolgdp, newcolsta)
+		data<- cbind(data, newcolgdp, newcolsta)
 	}
 	cat('Processing STAts\n')
 	for(STA.i in 1:numSTAts){
@@ -163,24 +163,24 @@ if(file.exists(dataForDamFacFile)){
 		}
 		
 		idxForThisSTAts <- 1:(numSample*numYears)+(numSample*numYears)*(STA.i-1)
-		dataForDamFac$id[idxForThisSTAts]     <- rep(gdpForThisSTAts$id,ncol(gdpForThisSTAts)-1)
-		dataForDamFac$staID[idxForThisSTAts]  <- STA.i
-		dataForDamFac$year[idxForThisSTAts]   <- rep(as.numeric(colnames(gdpForThisSTAts[,-1])),each=nrow(gdpForThisSTAts))
-		dataForDamFac$STA[idxForThisSTAts]    <- unlist(staForThisSTAts[,-1])
-		dataForDamFac$GDP[idxForThisSTAts]    <- unlist(gdpForThisSTAts[,-1])
+		data$id[idxForThisSTAts]     <- rep(gdpForThisSTAts$id,ncol(gdpForThisSTAts)-1)
+		data$staID[idxForThisSTAts]  <- STA.i
+		data$year[idxForThisSTAts]   <- rep(as.numeric(colnames(gdpForThisSTAts[,-1])),each=nrow(gdpForThisSTAts))
+		data$STA[idxForThisSTAts]    <- unlist(staForThisSTAts[,-1])
+		data$GDP[idxForThisSTAts]    <- unlist(gdpForThisSTAts[,-1])
 		for(ts.i in 1:length(timeshifts)){
-			dataForDamFac[[timeshiftColNamesGDP[ts.i]]]   <- unlist(gdpForThisSTAts.timeshifts[[ts.i]][-1])
-			dataForDamFac[[timeshiftColNamesSTA[ts.i]]] <- unlist(staForThisSTAts.timeshifts[[ts.i]][-1])
+			data[[timeshiftColNamesGDP[ts.i]]]   <- unlist(gdpForThisSTAts.timeshifts[[ts.i]][-1])
+			data[[timeshiftColNamesSTA[ts.i]]] <- unlist(staForThisSTAts.timeshifts[[ts.i]][-1])
 		}
 	}
-	numIDs <- length(unique(dataForDamFac$id))
+	numIDs <- length(unique(data$id))
 	cat('\n')
 	
 	# save data frame ####
 	cat('Saving data frame...RDS...')
-	saveRDS(dataForDamFac,dataForDamFacFile)
+	saveRDS(data,dataFile)
 	cat('csv...')
-	write.table(dataForDamFac,file.path('outputData',paste('dataForDamFac-',configStr,'.csv')),
+	write.table(data,file.path('outputData',paste('data-',configStr,'.csv')),
 							sep = ',',row.names = F)
 	cat('done\n')
 }
@@ -198,8 +198,8 @@ countBreaks <- c(0,1e-10,exp(1:(length(countAlpha)))[-1]/exp(length(countAlpha))
 yearBreaks <- seq(1979.5,2150.5,1)
 gdpBreaks <- seq(0,2e6,length.out=500)
 staIDbreaks <- 0.5:(numSTAts+0.5)
-staBreaks <- seq(0,max(dataForDamFac$STA,na.rm=T),length.out=200)
-staBreaksCol <- seq(0,max(dataForDamFac$STA,na.rm=T),length.out=length(staCols)+1)
+staBreaks <- seq(0,max(data$STA,na.rm=T),length.out=200)
+staBreaksCol <- seq(0,max(data$STA,na.rm=T),length.out=length(staCols)+1)
 
 
 hist2d <- function(x,y=NULL,xbreaks=NULL,ybreaks=NULL,
@@ -209,7 +209,7 @@ hist2d <- function(x,y=NULL,xbreaks=NULL,ybreaks=NULL,
 									 z=NULL,zbreaks=NULL,zcols=NULL,
 									 plot = T,
 									 returnCounts = F,
-									 dens=F,verbose=T){
+									 dens=F,verbose=T,counts=NULL){
 	if(is.null(xbreaks)){
 		xbreaks <- hist(x,plot=F)$breaks
 	}
@@ -232,26 +232,36 @@ hist2d <- function(x,y=NULL,xbreaks=NULL,ybreaks=NULL,
 	} else {
 		xy <- data.frame(x=x, y=y)
 	}
-	if(!is.null(z)){
-		if(is.null(zbreaks)|is.null(zcols)){
-			stop('If z is provided both zbreaks and zcols have to be specified. zcols should have one fewer entry than zbreaks.\n')
-		}
-		zbreaks[length(zbreaks)] <- Inf
-		counts <- array(NA, dim=c(length(xbreaks)-1,length(ybreaks)-1,length(zbreaks)-1))
-		for(zb.i in 1:(length(zbreaks)-1)){
-			xy.sel <- xy[which(z>=zbreaks[zb.i]&z<zbreaks[zb.i+1]),]
-			counts[,,zb.i] <- hist2d(xy.sel,xbreaks=xbreaks,ybreaks=ybreaks,plot=F,
-															 returnCounts=T,dens=dens)
-		}
-	} else {
-		counts <- array(NA,dim=c(length(xbreaks)-1,length(ybreaks)-1))
-		for(x.i in 1:(length(xbreaks)-1)){
-			histDat <- hist(xy$y[xy$x>=xbreaks[x.i] & xy$x<xbreaks[x.i+1]],
-											breaks=c(-Inf,ybreaks,Inf),plot=F)
-			counts[x.i,] <- histDat$counts[c(-1,-(length(ybreaks)+1))]
-		}
-		if(dens){
-			counts <- counts/nrow(xy)
+	redoCounts <- F
+	if(is.null(counts)){
+		redoCounts <- T
+	}	else if(!is.null(z) && sum(dim(counts)==c(length(xbreaks)-1,length(ybreaks)-1,length(zbreaks)-1))<3){
+		redoCounts <- T
+	} else if(sum(dim(counts)==c(length(xbreaks)-1,length(ybreaks)-1))<2){
+		redoCounts <- T
+	}
+	if(redoCounts){
+		if(!is.null(z)){
+			if(is.null(zbreaks)|is.null(zcols)){
+				stop('If z is provided both zbreaks and zcols have to be specified. zcols should have one fewer entry than zbreaks.\n')
+			}
+			zbreaks[length(zbreaks)] <- Inf
+			counts <- array(NA, dim=c(length(xbreaks)-1,length(ybreaks)-1,length(zbreaks)-1))
+			for(zb.i in 1:(length(zbreaks)-1)){
+				xy.sel <- xy[which(z>=zbreaks[zb.i]&z<zbreaks[zb.i+1]),]
+				counts[,,zb.i] <- hist2d(xy.sel,xbreaks=xbreaks,ybreaks=ybreaks,plot=F,
+																 returnCounts=T,dens=dens)
+			}
+		} else {
+			counts <- array(NA,dim=c(length(xbreaks)-1,length(ybreaks)-1))
+			for(x.i in 1:(length(xbreaks)-1)){
+				histDat <- hist(xy$y[xy$x>=xbreaks[x.i] & xy$x<xbreaks[x.i+1]],
+												breaks=c(-Inf,ybreaks,Inf),plot=F)
+				counts[x.i,] <- histDat$counts[c(-1,-(length(ybreaks)+1))]
+			}
+			if(dens){
+				counts <- counts/nrow(xy)
+			}
 		}
 	}
 	if(plot){
@@ -328,24 +338,27 @@ addCountLegend <- function(xleft,ybottom,xright,ytop,countBreaks,countAlpa,
 
 dir.create(fig.dir,F,T)
 
+## count alpha ####
 cat('plotting countAlpha...')
 png(file.path(fig.dir,'0-countVsAlpha.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
+par(mar=c(4.1,4.1,4.1,6))
 plot(countBreaks[-length(countBreaks)],countAlpha,pch=20,
 		 xlim=c(0,1),ylim=c(0,1))
 grid()
-addCountLegend(xleft = 0.9,ybottom = 0,xright = 1.1,ytop = 1,
+addCountLegend(xleft = 1.05,ybottom = 0,xright = 1.35,ytop = 1,
 							 countBreaks = countBreaks,countAlpa = countAlpha,
 							 maxCount = 1)
 dev.off()
 cat('done\n')
 
+## GDP ####
 cat('plotting GDP...')
 png(file.path(fig.dir,'1-GDP.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 plot(0,0,type='n',
-		 xlim=range(dataForDamFac$year),ylim=c(0,2e6),
+		 xlim=range(data$year),ylim=c(0,2e6),
 		 xlab='Year',ylab='billion constant 2021 $',
 		 main='Real GDP')
-counts <- hist2d(x = dataForDamFac$year, y = dataForDamFac$GDP,
+counts <- hist2d(x = data$year, y = data$GDP,
 			 xbreaks = yearBreaks, ybreaks = gdpBreaks,
 			 countAlpha = countAlpha, countBreaks = countBreaks,
 			 returnCounts = T)
@@ -355,94 +368,257 @@ addCountLegend(xleft = 2140,ybottom = 0,xright = 2200,ytop = 2e6,
 dev.off()
 cat('done\n')
 
+## GDP per STAts ####
 cat('plotting GDP per STAts')
 for(sta.i in 1:numSTAts){
 	cat('.')
 	png(file.path(fig.dir,paste0('1-GDP-STAtsID-',sta.i,'.png')),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 	plot(0,0,type='n',
-			 xlim=range(dataForDamFac$year),ylim=c(0,2e6),
+			 xlim=range(data$year),ylim=c(0,2e6),
 			 xlab='Year',ylab='billion constant 2021 $',
 			 main=paste0('Real GDP forced with STAts ',sta.i))
-	hist2d(x = dataForDamFac$year[dataForDamFac$staID==sta.i],
-				 y = dataForDamFac$GDP[dataForDamFac$staID==sta.i],
+	hist2d(x = data$year[data$staID==sta.i],
+				 y = data$GDP[data$staID==sta.i],
 				 xbreaks = yearBreaks, ybreaks = gdpBreaks)
 	dev.off()
 }
 cat('done\n')
 
+## GDP colored STAts ####
 cat('plotting GDP colored STAts...')
 png(file.path(fig.dir,'1-GDP-STAtsID-color.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 plot(0,0,type='n',
-		 xlim=range(dataForDamFac$year),ylim=c(0,2e6),
+		 xlim=range(data$year),ylim=c(0,2e6),
 		 xlab='Year',ylab='billion constant 2021 $',
 		 main='Real GDP')
-hist2d(x = dataForDamFac$year, y = dataForDamFac$GDP,
+hist2d(x = data$year, y = data$GDP,
 			 xbreaks = yearBreaks, ybreaks = gdpBreaks,
-			 z = dataForDamFac$staID,zbreaks = staIDbreaks,zcols = staCols)
+			 z = data$staID,zbreaks = staIDbreaks,zcols = staCols)
 dev.off()
 cat('done\n')
 
+## GDP colored STA ####
 cat('plotting GDP colored STA...')
 png(file.path(fig.dir,'1-GDP-STA-color.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 plot(0,0,type='n',
-		 xlim=range(dataForDamFac$year),ylim=c(0,2e6),
+		 xlim=range(data$year),ylim=c(0,2e6),
 		 xlab='Year',ylab='billion constant 2021 $',
 		 main='Real GDP')
-hist2d(x = dataForDamFac$year, y = dataForDamFac$GDP,
+hist2d(x = data$year, y = data$GDP,
 			 xbreaks = yearBreaks, ybreaks = gdpBreaks,
-			 z = dataForDamFac$STA,zbreaks = staBreaksCol,zcols = staCols)
+			 z = data$STA,zbreaks = staBreaksCol,zcols = staCols)
 dev.off()
 cat('done\n')
 
+## STA ####
 cat('plotting STA...')
 png(file.path(fig.dir,'2-STA.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
-plot(dataForDamFac$year[which(dataForDamFac$id==1)],
-		 dataForDamFac$STA[which(dataForDamFac$id==1)],
-		 col=staCols[dataForDamFac$staID[which(dataForDamFac$id==1)]],
+plot(data$year[which(data$id==1)],
+		 data$STA[which(data$id==1)],
+		 col=staCols[data$staID[which(data$id==1)]],
 		 xlab='Year',ylab='K',
 		 main='Surface Temperature Anomaly',
 		 pch=20)
 dev.off()
 cat('done\n')
 
+## STA vs GDP ####
 cat('plotting STA vs GDP...')
 dir.create(fig.dir,F,T)
 png(file.path(fig.dir,'3-GDPvsSTA.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 plot(0,0,type='n',
-		 xlim=c(0,max(dataForDamFac$STA,na.rm=T)),ylim=c(0,2e6),
+		 xlim=c(0,max(data$STA,na.rm=T)),ylim=c(0,2e6),
 		 xlab='Surface Temperature Anomaly K',ylab='GDP billion constant 2021 $',
 		 main='GDP vs STA')
-hist2d(x = dataForDamFac$STA, y = dataForDamFac$GDP,
+hist2d(x = data$STA, y = data$GDP,
 			 xbreaks = staBreaks, ybreaks = gdpBreaks)
 dev.off()
 cat('done\n')
 
+## STA vs GDP per STAts ####
 cat('plotting STA vs GDP per STAts')
 for(sta.i in 1:numSTAts){
 	cat('.')
 	png(file.path(fig.dir,paste0('1-GDPvsSTA-STAtsID-',sta.i,'.png')),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 	plot(0,0,type='n',
-			 xlim=c(0,max(dataForDamFac$STA,na.rm=T)),ylim=c(0,2e6),
+			 xlim=c(0,max(data$STA,na.rm=T)),ylim=c(0,2e6),
 			 xlab='Surface Temperature Anomaly K',ylab='GDP billion constant 2021 $',
 			 main=paste0('GDP vs STA for staID ',sta.i))
-	hist2d(x = dataForDamFac$STA[dataForDamFac$staID==sta.i],
-				 y = dataForDamFac$GDP[dataForDamFac$staID==sta.i],
+	hist2d(x = data$STA[data$staID==sta.i],
+				 y = data$GDP[data$staID==sta.i],
 				 xbreaks = staBreaks, ybreaks = gdpBreaks)
 	dev.off()
 }
 cat('done\n')
 
+## STA vs GDP ####
 cat('plotting STA vs GDP...')
 dir.create(fig.dir,F,T)
 png(file.path(fig.dir,'3-GDPvsSTAcolByStaID.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 plot(0,0,type='n',
-		 xlim=c(0,max(dataForDamFac$STA,na.rm=T)),ylim=c(0,2e6),
+		 xlim=c(0,max(data$STA,na.rm=T)),ylim=c(0,2e6),
 		 xlab='Surface Temperature Anomaly K',ylab='GDP billion constant 2021 $',
 		 main='GDP vs STA')
-hist2d(x = dataForDamFac$STA, y = dataForDamFac$GDP,
+hist2d(x = data$STA, y = data$GDP,
 			 xbreaks = staBreaks, ybreaks = gdpBreaks,
-			 z = dataForDamFac$staID,zbreaks = staIDbreaks,zcols = staCols)
+			 z = data$staID,zbreaks = staIDbreaks,zcols = staCols)
 dev.off()
 cat('done\n')
 
 # fit model ####
+dataComplete <- data[complete.cases(data),]
+fits <- list()
+
+# OLS ####
+fits[['fit.ols']] <- lm(GDP~poly(stalag1,2)+poly(gdplag1,2)+I(gdplag1*stalag1),data=dataComplete)
+summary(fits[['fit.ols']])
+
+# FeOLS ####
+degrees <- c(1,2,3,4)
+lagss <- list(c(1),
+							c(1,2,),
+							c(1,2,3),
+							c(1,2,3,4,5,10,20))
+## polynomial with interactions, id fixed effects
+for(degree in degrees){
+	for(lags.i in 1:length(lagss)){
+		lags <- lagss[[lags.i]]
+		modelName <- paste0('fit.feols.d',degree,'.l',paste(lags,collapse=','))
+		fitStr <- paste0('fits[["',modelName,'"]] <- feols(GDP~')
+		for(gdp.l in lags){
+			for(gdp.d in 1:degree){
+				fitStr <- paste0(fitStr,'+gdplag',gdp.l,'^',gdp.d)
+			}
+		}
+		for(sta.l in lags){
+			for(sta.d in 1:degree){
+				fitStr <- paste0(fitStr,'+stalag',sta.l,'^',sta.d)
+			}
+		}
+		for(gdp.l in lags){
+			for(gdp.d in 1:degree){
+				for(sta.l in lags){
+					for(sta.d in 1:degree){
+						if(gdp.d+sta.d<=degree){
+							fitStr <- paste0(fitStr,'+stalag',sta.l,'^',sta.d,'*gdplag',gdp.l,'^',gdp.d)
+						}
+					}
+				}
+			}
+		}
+		fitStr <- paste0(fitStr,' | id, data=dataComplete)')
+		library(fixest)
+		eval(parse(text=fitStr))
+		sink(file.path(fig.dir,paste0(modelName,'-summary.txt')),append = F)
+		summary(fits[[modelName]])
+		sink()
+	}
+}
+
+## polynomial with interactions, id fixed effects interacting with gdp
+for(degree in degrees){
+	for(lags.i in 1:length(lagss)){
+		modelName <- paste0('fit.feols.intFE.d',degree,'.l',paste(lags,collapse=','))
+		fitStr <- paste0('fits[["',modelName,'"]] <- feols(GDP~')
+		for(gdp.l in lags){
+			for(gdp.d in 1:degree){
+				fitStr <- paste0(fitStr,'+gdplag',gdp.l,'^',gdp.d)
+			}
+		}
+		for(sta.l in lags){
+			for(sta.d in 1:degree){
+				fitStr <- paste0(fitStr,'+stalag',sta.l,'^',sta.d)
+			}
+		}
+		for(gdp.l in lags){
+			for(gdp.d in 1:degree){
+				for(sta.l in lags){
+					for(sta.d in 1:degree){
+						if(gdp.d+sta.d<=degree){
+							fitStr <- paste0(fitStr,'+stalag',sta.l,'^',sta.d,'*gdplag',gdp.l,'^',gdp.d)
+						}
+					}
+				}
+			}
+		}
+		fitStr <- paste0(fitStr,' | id[gdplag1], data=dataComplete)')
+		library(fixest)
+		eval(parse(text=fitStr))
+		sink(file.path(fig.dir,paste0(modelName,'-summary.txt')),append = F)
+		summary(fits[[modelName]])
+		sink()
+	}
+}
+
+# Est DamFac ####
+
+# counter factual data with zero sta
+dataCF <- dataComplete
+dataCF[,which(grepl('sta',colnames(dataCF),ignore.case = T))] <- 0
+
+## prediction ####
+pred <- list()
+resid <- list()
+predCF <- list()
+DF <- list()
+for(modelName in names(fits)){
+	cat(sprintf('Predicting for %s\n', modelName))
+	pred[[modelName]] <- predict(fits[[modelName]])
+	cat(sprintf('Resid for %s\n', modelName))
+	resid[[modelName]] <- resid(fits[[modelName]])
+	cat(sprintf('Predicting CF for %s\n', modelName))
+	predCF[[modelName]] <- predict(fits[[modelName]],dataCF)
+	cat(sprintf('Calculting DF for %s\n', modelName))
+	DF[[modelName]] <- (predCF[[modelName]] - pred[[modelName]])/predCF[[modelName]]
+}
+
+## plot ####
+histResX <- 500
+histResY <- 500
+numColors <- 100
+countAlpha <- seq(0.1,1,length.out=numColors)
+countBreaks <- c(0,pnorm(countAlpha,mean=1.2,sd=0.2,log.p=F))
+countBreaks[length(countBreaks)] <- 1
+### resid ####
+residCounts <- list() # cache for replotting
+for(i in 1:length(fits)){
+	modelName <- names(fits)[i]
+	cat(sprintf('Plotting obs vs resid for %s\n',modelName))
+	png(file.path(fig.dir,paste0('4-',i,'-',modelName,'-GDPVsResid.png')),
+										width = fig.w,height = fig.h,units = fig.u,res = fig.res)
+	xrange <- range(dataComplete$GDP,na.rm=T)
+	yrange <- range(resid[[modelName]],na.rm=T)
+	plot(0,0,type='n',
+			 xlim=xrange,ylim=yrange,
+			 xlab='GDP billion constant 2021 $',ylab='resid',
+			 main='GDP vs Resid')
+	mtext(modelName,3,0.25)
+	residCounts[[modelName]] <- hist2d(x=dataComplete$GDP,y=resid[[modelName]],
+				 xbreaks = seq(xrange[1],xrange[2],length.out=histResX),
+				 ybreaks = seq(yrange[1],yrange[2],length.out=histResY),
+				 countAlpha = countAlpha, countBreaks = countBreaks,
+				 counts = residCounts[[modelName]])
+	dev.off()
+}
+
+### DF ####
+DFCounts <- list() # cache for replotting
+for(i in 1:length(fits)){
+	modelName <- names(fits)[i]
+	cat(sprintf('Plotting DF for %s\n',modelName))
+	png(file.path(fig.dir,paste0('5-',i,'-',modelName,'-STAVsDF.png')),
+			width = fig.w,height = fig.h,units = fig.u,res = fig.res)
+	xrange <- c(0,7)
+	yrange <- c(0,0.8)
+	plot(0,0,type='n',
+			 xlim=xrange,ylim=yrange,
+			 xlab='GDP billion constant 2021 $',ylab='resid',
+			 main='GDP vs Resid')
+	mtext(modelName,3,0.25)
+	DFCounts[[modelName]] <- hist2d(x=dataComplete$STA,y=DF[[modelName]],
+																		 xbreaks = seq(xrange[1],xrange[2],length.out=histResX),
+																		 ybreaks = seq(yrange[1],yrange[2],length.out=histResY),
+																		 countAlpha = countAlpha, countBreaks = countBreaks,
+																		 counts = DFCounts[[modelName]])
+	dev.off()
+}
