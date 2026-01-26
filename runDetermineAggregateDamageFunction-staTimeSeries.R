@@ -518,13 +518,13 @@ plotResid <- function(){
 	png(file.path(fig.dir,paste0('4-',i,'-',modelName,'-GDPVsResid.png')),
 			width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 	xrange <- range(dataComplete$GDP,na.rm=T)
-	yrange <- range(resid,na.rm=T)
+	yrange <- range(retList$resid,na.rm=T)
 	plot(0,0,type='n',
 			 xlim=xrange,ylim=yrange,
 			 xlab='GDP billion constant 2021 $',ylab='resid',
 			 main='GDP vs Resid')
 	mtext(modelName,3,0.25)
-	residCounts[[modelName]] <- hist2d(x=dataComplete$GDP,y=resid,
+	residCounts[[modelName]] <- hist2d(x=dataComplete$GDP,y=retList$resid,
 																		 xbreaks = seq(xrange[1],xrange[2],length.out=histResX),
 																		 ybreaks = seq(yrange[1],yrange[2],length.out=histResY),
 																		 countAlpha = countAlpha, countBreaks = countBreaks,
@@ -560,10 +560,10 @@ modelName <- 'fitOLS'
 sink(file.path(fig.dir,paste0(modelName,'-summary.txt')),append = F)
 summary(fitModel)
 sink()
-cat('plotting Resid...')
-plotResid()
 cat('predict dam fac...')
 damFacRes <- predictDamFac()
+cat('plotting Resid...')
+plotResid()
 cat('plot dam fac...')
 plotDF()
 cat('done\n')
@@ -653,10 +653,10 @@ for(degree in degrees){
 		sink(file.path(fig.dir,paste0(modelName,'-summary.txt')),append = F)
 		summary(fitModel)
 		sink()
-		cat('plotting Resid...')
-		plotResid()
 		cat('predict dam fac...')
 		damFacRes <- predictDamFac()
+		cat('plotting Resid...')
+		plotResid()
 		cat('plot dam fac...')
 		plotDF()
 		cat('done\n')
