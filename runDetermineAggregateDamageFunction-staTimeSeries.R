@@ -552,10 +552,9 @@ plotDF <- function(){
 	dev.off()
 }
 
-
-
 # OLS ####
 cat('fitting ols model...')
+i <- 1
 fitModel <- lm(GDP~poly(stalag1,2)+poly(gdplag1,2)+I(gdplag1*stalag1),data=dataComplete)
 modelName <- 'fitOLS'
 sink(file.path(fig.dir,paste0(modelName,'-summary.txt')),append = F)
@@ -605,6 +604,7 @@ for(degree in degrees){
 		}
 		fitStr <- paste0(fitStr,' | id, data=dataComplete)')
 		library(fixest)
+		i <- i+1
 		eval(parse(text=fitStr))
 		sink(file.path(fig.dir,paste0(modelName,'-summary.txt')),append = F)
 		summary(fitModel)
@@ -648,6 +648,7 @@ for(degree in degrees){
 		}
 		fitStr <- paste0(fitStr,' | id[gdplag1], data=dataComplete)')
 		library(fixest)
+		i <- i+1
 		eval(parse(text=fitStr))
 		sink(file.path(fig.dir,paste0(modelName,'-summary.txt')),append = F)
 		summary(fitModel)
