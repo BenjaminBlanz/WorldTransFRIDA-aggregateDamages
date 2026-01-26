@@ -470,13 +470,15 @@ dataComplete <- data[complete.cases(data),]
 fits <- list()
 
 # OLS ####
+cat('fitting ols model...')
 fits[['fit.ols']] <- lm(GDP~poly(stalag1,2)+poly(gdplag1,2)+I(gdplag1*stalag1),data=dataComplete)
 summary(fits[['fit.ols']])
+cat('done\n')
 
 # FeOLS ####
 degrees <- c(1,2,3,4)
 lagss <- list(c(1),
-							c(1,2,),
+							c(1,2),
 							c(1,2,3),
 							c(1,2,3,4,5,10,20))
 ## polynomial with interactions, id fixed effects
@@ -484,6 +486,7 @@ for(degree in degrees){
 	for(lags.i in 1:length(lagss)){
 		lags <- lagss[[lags.i]]
 		modelName <- paste0('fit.feols.d',degree,'.l',paste(lags,collapse=','))
+		cat(sprintf('fitting %s...',modelName))
 		fitStr <- paste0('fits[["',modelName,'"]] <- feols(GDP~')
 		for(gdp.l in lags){
 			for(gdp.d in 1:degree){
@@ -512,6 +515,7 @@ for(degree in degrees){
 		sink(file.path(fig.dir,paste0(modelName,'-summary.txt')),append = F)
 		summary(fits[[modelName]])
 		sink()
+		cat('done\n')
 	}
 }
 
@@ -519,6 +523,7 @@ for(degree in degrees){
 for(degree in degrees){
 	for(lags.i in 1:length(lagss)){
 		modelName <- paste0('fit.feols.intFE.d',degree,'.l',paste(lags,collapse=','))
+		cat(sprintf('fitting %s...',modelName))
 		fitStr <- paste0('fits[["',modelName,'"]] <- feols(GDP~')
 		for(gdp.l in lags){
 			for(gdp.d in 1:degree){
@@ -547,6 +552,7 @@ for(degree in degrees){
 		sink(file.path(fig.dir,paste0(modelName,'-summary.txt')),append = F)
 		summary(fits[[modelName]])
 		sink()
+		cat('done\n')
 	}
 }
 
@@ -569,7 +575,7 @@ for(modelName in names(fits)){
 	cat(sprintf('Predicting CF for %s\n', modelName))
 	predCF[[modelName]] <- predict(fits[[modelName]],dataCF)
 	cat(sprintf('Calculting DF for %s\n', modelName))
-	DF[[modelName]] <- (predCF[[modelName]] - pred[[modelName]])/predCF[[modelName]]
+	DF[[modelName]] <- 1-((predCF[[modelName]] - pred[[modelName]])/predCF[[modelName]])
 }
 
 ## plot ####
