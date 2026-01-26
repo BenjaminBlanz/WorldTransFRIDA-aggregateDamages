@@ -339,17 +339,19 @@ addCountLegend <- function(xleft,ybottom,xright,ytop,countBreaks,countAlpa,
 dir.create(fig.dir,F,T)
 
 ## count alpha ####
-cat('plotting countAlpha...')
-png(file.path(fig.dir,'0-countVsAlpha.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
-par(mar=c(4.1,4.1,4.1,6))
-plot(countBreaks[-length(countBreaks)],countAlpha,pch=20,
-		 xlim=c(0,1),ylim=c(0,1))
-grid()
-addCountLegend(xleft = 1.05,ybottom = 0,xright = 1.35,ytop = 1,
-							 countBreaks = countBreaks,countAlpa = countAlpha,
-							 maxCount = 1)
-dev.off()
-cat('done\n')
+if(!file.exists(file.path(fig.dir,'0-countVsAlpha.png'))){
+	cat('plotting countAlpha...')
+	png(file.path(fig.dir,'0-countVsAlpha.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
+	par(mar=c(4.1,4.1,4.1,6))
+	plot(countBreaks[-length(countBreaks)],countAlpha,pch=20,
+			 xlim=c(0,1),ylim=c(0,1))
+	grid()
+	addCountLegend(xleft = 1.05,ybottom = 0,xright = 1.35,ytop = 1,
+								 countBreaks = countBreaks,countAlpa = countAlpha,
+								 maxCount = 1)
+	dev.off()
+	cat('done\n')
+}
 
 ## GDP ####
 if(!file.exists(file.path(fig.dir,'1-GDP.png'))){
@@ -371,10 +373,9 @@ if(!file.exists(file.path(fig.dir,'1-GDP.png'))){
 }
 
 ## GDP per STAts ####
-cat('plotting GDP per STAts')
 for(sta.i in 1:numSTAts){
 	if(!file.exists(file.path(fig.dir,paste0('1-GDP-STAtsID-',sta.i,'.png')))){
-		cat('.')
+		cat(sprintf('plotting GDP per STAts %i...',sta.i))
 		png(file.path(fig.dir,paste0('1-GDP-STAtsID-',sta.i,'.png')),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 		plot(0,0,type='n',
 				 xlim=range(data$year),ylim=c(0,2e6),
@@ -384,9 +385,9 @@ for(sta.i in 1:numSTAts){
 					 y = data$GDP[data$staID==sta.i],
 					 xbreaks = yearBreaks, ybreaks = gdpBreaks)
 		dev.off()
+		cat('done\n')
 	}
 }
-cat('done\n')
 
 ## GDP colored STAts ####
 if(!file.exists(file.path(fig.dir,'1-GDP-STAtsID-color.png'))){
@@ -448,10 +449,9 @@ if(!file.exists(file.path(fig.dir,'3-GDPvsSTA.png'))){
 }
 
 ## STA vs GDP per STAts ####
-cat('plotting STA vs GDP per STAts')
 for(sta.i in 1:numSTAts){
 	if(!file.exists(file.path(fig.dir,paste0('1-GDPvsSTA-STAtsID-',sta.i,'.png')))){
-		cat('.')
+		cat(sprintf('plotting STA vs GDP per STAts %i...',sta.i))
 		png(file.path(fig.dir,paste0('1-GDPvsSTA-STAtsID-',sta.i,'.png')),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 		plot(0,0,type='n',
 				 xlim=c(0,max(data$STA,na.rm=T)),ylim=c(0,2e6),
@@ -461,8 +461,8 @@ for(sta.i in 1:numSTAts){
 					 y = data$GDP[data$staID==sta.i],
 					 xbreaks = staBreaks, ybreaks = gdpBreaks)
 		dev.off()
+		cat('done\n')
 	}
-	cat('done\n')
 }
 
 ## STA vs GDP ####
@@ -482,10 +482,12 @@ if(!file.exists(file.path(fig.dir,'3-GDPvsSTAcolByStaID.png'))){
 }
 
 # fit model ####
+cat('determining complete data rows...')
 dataComplete <- data[complete.cases(data),]
 # counter factual data with zero sta
 dataCF <- dataComplete
 dataCF[,which(grepl('sta',colnames(dataCF),ignore.case = T))] <- 0
+cat('done\n')
 
 ## prediction ####
 predictDamFac <- function(){
@@ -556,7 +558,6 @@ plotDF <- function(){
 cat('fitting ols model...')
 fitModel <- lm(GDP~poly(stalag1,2)+poly(gdplag1,2)+I(gdplag1*stalag1),data=dataComplete)
 modelName <- 'fitOLS'
-eval(parse(text=fitStr))
 sink(file.path(fig.dir,paste0(modelName,'-summary.txt')),append = F)
 summary(fitModel)
 sink()
