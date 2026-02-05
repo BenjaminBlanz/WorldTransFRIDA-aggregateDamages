@@ -112,24 +112,27 @@ if(file.exists(dataFile)){
 	setwd(aggDamWD)
 	
 	# timeshift function ####
-	timeshiftData <- function(data, amount){
+	timeshiftData <- function(inData, amount){
 		if(amount > 0){
-			resData <- cbind(data[,1],data[,(amount+2):ncol(data)],matrix(NA,nrow=nrow(data),ncol=amount))
+			resData <- cbind(inData[,1],inData[,(amount+2):ncol(inData)],matrix(NA,nrow=nrow(inData),ncol=amount))
 		} else if (amount < 0){
-			resData <- cbind(data[,1],matrix(NA,nrow=nrow(data),ncol=-amount),data[,c(2:(ncol(data)+amount))])
+			resData <- cbind(inData[,1],matrix(NA,nrow=nrow(inData),ncol=-amount),inData[,c(2:(ncol(inData)+amount))])
 		} else {
-			resData <- data
+			resData <- inData
 		}
-		colnames(resData) <- colnames(data)
+		colnames(resData) <- colnames(inData)
 		return(resData)
 	}
 	
 	# read STA data ####
 	timeshifts <- c(1,-1:-5,-10,-20)
 	nrowOutput <- numSample*numYears*numSTAts
-	data <- data.frame(id=numeric(nrowOutput),staID=numeric(nrowOutput),
-															year=numeric(nrowOutput),STA=numeric(nrowOutput),
-															GDP=numeric(nrowOutput))
+	data <- data.frame(
+		id=numeric(nrowOutput),staID=numeric(nrowOutput),
+		year=numeric(nrowOutput),STA=numeric(nrowOutput),
+		GDP=numeric(nrowOutput),GDPd1=numeric(nrowOutput),
+		GDPGrRt=numeric(nrowOutput)
+		)
 	timeshiftColNamesSTA <- timeshiftColNamesGDP <- c()
 	for(ts.i in 1:length(timeshifts)){
 		if(timeshifts[ts.i]<0){
@@ -148,12 +151,16 @@ if(file.exists(dataFile)){
 		cat(sprintf('\rProcessing STA.i %i of %i',STA.i,numSTAts))
 		gdpForThisSTAts <- readRDS(file.path(location.fridaUncertaintyWD,'workOutput',forcedRuns$expID[STA.i],
 																			 'detectedParmSpace','PerVarFiles-RDS','gdp_real_gdp_in_2021c.RDS'))
+		cat('.')
 		staForThisSTAts <- readRDS(file.path(location.fridaUncertaintyWD,'workOutput',forcedRuns$expID[STA.i],
 																			 'detectedParmSpace','PerVarFiles-RDS','energy_balance_model_surface_temperature_anomaly.RDS'))
+		cat('.')
 		loglikeForThisSTAts <- readRDS(file.path(location.fridaUncertaintyWD,'workOutput',forcedRuns$expID[STA.i],
 																					 'detectedParmSpace','PerVarFiles-RDS','logLike.RDS'))
+		cat('.')
 		# NA out any incomplete entry but do not remove the rows, so that the indexing is not broken
 		gdpForThisSTAts[loglikeForThisSTAts$logLike < -1e200, -1] <- NA
+		gdpGrRtForThisSTAts[loglikeForThisSTAts$logLike < -1e200, -1] <- NA
 		
 		gdpForThisSTAts.timeshifts <- list()
 		staForThisSTAts.timeshifts <- list()
@@ -161,6 +168,7 @@ if(file.exists(dataFile)){
 			gdpForThisSTAts.timeshifts[[ts.i]] <- timeshiftData(gdpForThisSTAts,timeshifts[ts.i])
 			staForThisSTAts.timeshifts[[ts.i]] <- timeshiftData(staForThisSTAts,timeshifts[ts.i])
 		}
+		cat('.')
 		
 		idxForThisSTAts <- 1:(numSample*numYears)+(numSample*numYears)*(STA.i-1)
 		data$id[idxForThisSTAts]     <- rep(gdpForThisSTAts$id,ncol(gdpForThisSTAts)-1)
@@ -169,10 +177,12 @@ if(file.exists(dataFile)){
 		data$STA[idxForThisSTAts]    <- unlist(staForThisSTAts[,-1])
 		data$GDP[idxForThisSTAts]    <- unlist(gdpForThisSTAts[,-1])
 		for(ts.i in 1:length(timeshifts)){
-			data[[timeshiftColNamesGDP[ts.i]]]   <- unlist(gdpForThisSTAts.timeshifts[[ts.i]][-1])
-			data[[timeshiftColNamesSTA[ts.i]]] <- unlist(staForThisSTAts.timeshifts[[ts.i]][-1])
+			data[[timeshiftColNamesGDP[ts.i]]][idxForThisSTAts] <- unlist(gdpForThisSTAts.timeshifts[[ts.i]][,-1])
+			data[[timeshiftColNamesSTA[ts.i]]][idxForThisSTAts] <- unlist(staForThisSTAts.timeshifts[[ts.i]][,-1])
 		}
 	}
+	data$GDPd1 <- data$GDP - data$gdplag1
+	data$GDPGrRt <- data$GDPd1/data$GDP
 	numIDs <- length(unique(data$id))
 	cat('\n')
 	
@@ -180,8 +190,11 @@ if(file.exists(dataFile)){
 	cat('Saving data frame...RDS...')
 	saveRDS(data,dataFile)
 	cat('csv...')
-	write.table(data,file.path('outputData',paste('data-',configStr,'.csv')),
+	write.table(data,file.path('outputData',paste0('data-',configStr,'.csv')),
 							sep = ',',row.names = F)
+	cat('gz...')
+	system(paste0('gzip -f ',file.path('outputData',paste0('data-',configStr,'.csv'))),
+				 wait = T)
 	cat('done\n')
 }
 
@@ -189,7 +202,7 @@ if(file.exists(dataFile)){
 fig.dir <- 'figures/forcedSTAts'
 fig.w <- 15
 fig.h <- 15
-fig.res <- 300
+fig.res <- 600
 fig.u <- 'cm'
 
 staCols <- rainbow(numSTAts*3+1)[(numSTAts*2+1):(numSTAts*3)]
@@ -207,9 +220,9 @@ hist2d <- function(x,y=NULL,xbreaks=NULL,ybreaks=NULL,
 									 countAlpha = seq(0,1,length.out=10),
 									 countBreaks=NULL,
 									 z=NULL,zbreaks=NULL,zcols=NULL,
-									 plot = T,
+									 plot = T, add = T,
 									 returnCounts = F,
-									 dens=F,verbose=T,counts=NULL){
+									 dens=F,verbose=T,counts=NULL,...){
 	if(is.null(xbreaks)){
 		xbreaks <- hist(x,plot=F)$breaks
 	}
@@ -265,6 +278,10 @@ hist2d <- function(x,y=NULL,xbreaks=NULL,ybreaks=NULL,
 		}
 	}
 	if(plot){
+		if(!add){
+			plot(0,0,type='n',xlim=range(xbreaks),ylim=range(ybreaks),
+					 xaxs='i',yaxs='i',...)
+		}
 		if(length(dim(counts))==3){
 			maxCounts <- max(colSums(counts,na.rm=T,dims=2))
 			zcols <- col2rgb(zcols)
@@ -361,18 +378,19 @@ if(!file.exists(file.path(fig.dir,'1-GDP.png'))){
 			 xlim=range(data$year),ylim=c(0,2e6),
 			 xlab='Year',ylab='billion constant 2021 $',
 			 main='Real GDP')
-	counts <- hist2d(x = data$year, y = data$GDP,
+	gdpCounts <- hist2d(x = data$year, y = data$GDP,
 				 xbreaks = yearBreaks, ybreaks = gdpBreaks,
 				 countAlpha = countAlpha, countBreaks = countBreaks,
 				 returnCounts = T)
 	addCountLegend(xleft = 2140,ybottom = 0,xright = 2200,ytop = 2e6,
 								 countBreaks = countBreaks,countAlpa = countAlpha,
-								 maxCount = max(counts))
+								 maxCount = max(gdpCounts))
 	dev.off()
 	cat('done\n')
 }
 
 ## GDP per STAts ####
+gdpCounts.sta.i <- list()
 for(sta.i in 1:numSTAts){
 	if(!file.exists(file.path(fig.dir,paste0('1-GDP-STAtsID-',sta.i,'.png')))){
 		cat(sprintf('plotting GDP per STAts %i...',sta.i))
@@ -381,9 +399,10 @@ for(sta.i in 1:numSTAts){
 				 xlim=range(data$year),ylim=c(0,2e6),
 				 xlab='Year',ylab='billion constant 2021 $',
 				 main=paste0('Real GDP forced with STAts ',sta.i))
-		hist2d(x = data$year[data$staID==sta.i],
+		gdpCounts.sta.i[[sta.i]] <- hist2d(x = data$year[data$staID==sta.i],
 					 y = data$GDP[data$staID==sta.i],
-					 xbreaks = yearBreaks, ybreaks = gdpBreaks)
+					 xbreaks = yearBreaks, ybreaks = gdpBreaks,
+					 returnCounts = T)
 		dev.off()
 		cat('done\n')
 	}
@@ -511,10 +530,10 @@ numColors <- 100
 countAlpha <- seq(0.1,1,length.out=numColors)
 countBreaks <- c(0,pnorm(countAlpha,mean=1.2,sd=0.2,log.p=F))
 countBreaks[length(countBreaks)] <- 1
-### resid ####
 residCounts <- list() # cache for replotting
+
 plotResid <- function(){
-	cat(sprintf('Plotting obs vs resid for %s\n',modelName))
+	cat(sprintf('Plotting obs gdp vs resid for %s...',modelName))
 	png(file.path(fig.dir,paste0('4-',i,'-',modelName,'-GDPVsResid.png')),
 			width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 	xrange <- range(dataComplete$GDP,na.rm=T)
@@ -530,19 +549,36 @@ plotResid <- function(){
 																		 countAlpha = countAlpha, countBreaks = countBreaks,
 																		 counts = residCounts[[modelName]])
 	dev.off()
-}
-### DF ####
-DFCounts <- list() # cache for replotting
-plotDF <- function(){
-	cat(sprintf('Plotting DF for %s\n',modelName))
-	png(file.path(fig.dir,paste0('5-',i,'-',modelName,'-STAVsDF.png')),
+	cat('done\n')
+	cat(sprintf('Plotting obs sta vs resid for %s...',modelName))
+	png(file.path(fig.dir,paste0('4-',i,'-',modelName,'-STAVsResid.png')),
 			width = fig.w,height = fig.h,units = fig.u,res = fig.res)
-	xrange <- c(0,7)
-	yrange <- c(0,0.8)
+	xrange <- range(dataComplete$STA,na.rm=T)
+	yrange <- range(damFacRes$resid,na.rm=T)
 	plot(0,0,type='n',
 			 xlim=xrange,ylim=yrange,
-			 xlab='GDP billion constant 2021 $',ylab='resid',
-			 main='GDP vs Resid')
+			 xlab='Surface Temperature Anomaly K',ylab='resid',
+			 main='STA vs Resid')
+	mtext(modelName,3,0.25)
+	residCounts[[modelName]] <- hist2d(x=dataComplete$STA,y=damFacRes$resid,
+																		 xbreaks = seq(xrange[1],xrange[2],length.out=histResX),
+																		 ybreaks = seq(yrange[1],yrange[2],length.out=histResY),
+																		 countAlpha = countAlpha, countBreaks = countBreaks,
+																		 counts = residCounts[[modelName]])
+	dev.off()
+}
+
+DFCounts <- list() # cache for replotting
+plotDF <- function(){
+	cat(sprintf('Plotting DF for %s...',modelName))
+	png(file.path(fig.dir,paste0('4-',i,'-',modelName,'-STAVsDF.png')),
+			width = fig.w,height = fig.h,units = fig.u,res = fig.res)
+	xrange <- c(0,7)
+	yrange <- range(damFacRes$DF,na.rm=T)#c(0,0.8)
+	plot(0,0,type='n',
+			 xlim=xrange,ylim=yrange,
+			 xlab='Surface Temperature Anomaly',ylab='Damage Factor',
+			 main='Damage Factor')
 	mtext(modelName,3,0.25)
 	DFCounts[[modelName]] <- hist2d(x=dataComplete$STA,y=damFacRes$DF,
 																	xbreaks = seq(xrange[1],xrange[2],length.out=histResX),
@@ -550,6 +586,32 @@ plotDF <- function(){
 																	countAlpha = countAlpha, countBreaks = countBreaks,
 																	counts = DFCounts[[modelName]])
 	dev.off()
+	cat('done\n')
+}
+
+fitPlot <- function(fitAndDataList){
+	layout(mat = matrix(c(1,1,1,1,
+												2,3,4,5,
+												6,7,8,9,
+												10,11,12,13,
+												14,15,16,17),nrow=5,byrow=T),
+				 widths = c(0.1,1,1,1),heights = c(0.1,1,1,1,1))
+	par(mar=c(0,0,0,0))
+	plot(0,0,type='n',axes=F,xlab='',ylab='')
+	text(0,0,fitAndDataList$fit$call,adj=c(0.5,0.5))
+	
+	plot(0,0,type='n',axes=F,xlab='',ylab='')
+	text(0,0,'FRIDA',srt=90,adj=c(0.5,0.5))
+	par(pch='.',mar=c(4,4,1,1))
+	hist2d(fitAndDataList$data$year,fitAndDataList$data$gdplag1,
+				 yearBreaks,gdpBreaks,
+				 xlab='Year',ylab='gdp lag 1')
+	plot(fitAndDataList$data$year,fitAndDataList$data$STA,
+			 yearBreaks,staBreaks,
+			 xlab='Year',ylab='STA')
+	plot(fitAndDataList$data$year,fitAndDataList$data$gdpGrRt,
+			 yearBreaks,gdpGrRtBreaks,
+			 xlab='Year',ylab='GDP growth rate')
 }
 
 # OLS ####
@@ -573,6 +635,7 @@ degrees <- c(1,2,3,4)
 lagss <- list(c(1),
 							c(1,2),
 							c(1,2,3),
+							c(1,2,3,4,5,10),
 							c(1,2,3,4,5,10,20))
 ## polynomial with interactions, id fixed effects
 for(degree in degrees){
@@ -609,19 +672,17 @@ for(degree in degrees){
 		sink(file.path(fig.dir,paste0(modelName,'-summary.txt')),append = F)
 		summary(fitModel)
 		sink()
-		cat('plotting Resid...')
 		plotResid()
-		cat('predict dam fac...')
 		damFacRes <- predictDamFac()
-		cat('plot dam fac...')
 		plotDF()
-		cat('done\n')
+		cat('\n')
 	}
 }
 
 ## polynomial with interactions, id fixed effects interacting with gdp
 for(degree in degrees){
 	for(lags.i in 1:length(lagss)){
+		lags <- lagss[[lags.i]]
 		modelName <- paste0('fit.feols.intFE.d',degree,'.l',paste(lags,collapse=','))
 		cat(sprintf('fitting %s...',modelName))
 		fitStr <- paste0('fitModel <- feols(GDP~')
@@ -653,12 +714,9 @@ for(degree in degrees){
 		sink(file.path(fig.dir,paste0(modelName,'-summary.txt')),append = F)
 		summary(fitModel)
 		sink()
-		cat('predict dam fac...')
 		damFacRes <- predictDamFac()
-		cat('plotting Resid...')
 		plotResid()
-		cat('plot dam fac...')
 		plotDF()
-		cat('done\n')
+		cat('\n')
 	}
 }
