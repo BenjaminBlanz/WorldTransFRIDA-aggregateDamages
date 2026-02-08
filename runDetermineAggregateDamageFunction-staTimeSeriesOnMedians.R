@@ -1,3 +1,5 @@
+# with changes by can
+
 aggDamWD <- getwd()
 source('config-DetermineAggregateDamageFunction.R')
 configStr <- paste0('S-',numSample,'-nSTAts-',numSTAts,'-',identifier)
