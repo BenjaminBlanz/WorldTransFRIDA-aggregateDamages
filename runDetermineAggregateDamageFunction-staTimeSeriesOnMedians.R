@@ -253,6 +253,8 @@ makePredAndDF <- function(fit,data=NULL){
 		retList$df3 <- (retList$predCF - retList$pred)
 	} else {
 		retList$df <-  (retList$predCF - retList$pred)/retList$predCF
+		retList$df2 <-  (retList$predCF - retList$pred)/retList$predCF
+		retList$df3 <-  (retList$predCF - retList$pred)
 	}
 	retList$df1 <- retList$df 
 	retList$data <- data
@@ -416,6 +418,7 @@ fitPlot <- function(fitAndDataList,pch=20,dfToUse=1){
 ## OLS ####
 mdataSubsetName <- 'fiftyOnwards'
 mdataSubset <- dataSubsets[[mdataSubsetName]]
+dfsToUse <- 1:3
 ### GDP 1 ####
 fits$ols1 <- makePredAndDF(lm(GDP~STA+I(STA^2)+gdplag1,data=mdataSubset),mdataSubset)
 sink(file.path(fig.dir,'OLS-GDP1.txt'))
@@ -460,15 +463,11 @@ fits$olsGDPd11 <- makePredAndDF(lm(GDPd1~STA+I(STA^2)+gdplag1,data=mdataSubset),
 sink(file.path(fig.dir,'OLS-GDPd11.txt'))
 summary(fits$olsGDPd11$fit)
 sink()
-png(file.path(fig.dir,'OLS-GDPd11.png'),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
-fitPlot(fits$olsGDPd11)
-dev.off()
-png(file.path(fig.dir,'OLS-GDPd11-df2.png'),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
-fitPlot(fits$olsGDPd11,dfToUse = 2)
-dev.off()
-png(file.path(fig.dir,'OLS-GDPd11-df3.png'),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
-fitPlot(fits$olsGDPd11,dfToUse = 3)
-dev.off()
+for(dfToUse in dfsToUse){
+	png(file.path(fig.dir,paste0('OLS-GDPd11-df',dfToUse,'.png')),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
+	fitPlot(fits$olsGDPd11,dfToUse=dfToUse)
+	dev.off()
+}
 
 # fitPlot3d(fits$olsGDPd11$fit,'gdplag1','GDP',gdpSurfVals)
 ### GDP d1 2 ####
@@ -478,15 +477,11 @@ fits$olsGDPd12 <- makePredAndDF(lm(GDPd1~STA+I(STA^2)+year+I(year^2),
 sink(file.path(fig.dir,'OLS-GDPd12.txt'))
 summary(fits$olsGDPd12$fit)
 sink()
-png(file.path(fig.dir,'OLS-GDPd12-df1.png'),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
-fitPlot(fits$olsGDPd12,dfToUse = 1)
-dev.off()
-png(file.path(fig.dir,'OLS-GDPd12-df2.png'),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
-fitPlot(fits$olsGDPd12,dfToUse = 2)
-dev.off()
-png(file.path(fig.dir,'OLS-GDPd12-df3.png'),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
-fitPlot(fits$olsGDPd12,dfToUse = 3)
-dev.off()
+for(dfToUse in dfsToUse){
+	png(file.path(fig.dir,paste0('OLS-GDPd12-df',dfToUse,'.png')),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
+	fitPlot(fits$olsGDPd12,dfToUse = dfToUse)
+	dev.off()
+}
 # fitPlot3d(fits$olsGDPd11$fit,'gdplag1','GDP',gdpSurfVals)
 
 ### GDP Gr Rt 1 ####
@@ -495,23 +490,25 @@ fits$olsGrRt1 <- makePredAndDF(lm(gdpGrRt~
 sink(file.path(fig.dir,'OLS-GDPGrRt1.txt'))
 summary(fits$olsGrRt1$fit)
 sink()
-png(file.path(fig.dir,'OLS-GDPGrRt1-df1.png'),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
-fitPlot(fits$olsGrRt1)
-dev.off()
-png(file.path(fig.dir,'OLS-GDPGrRt1-df2.png'),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
-fitPlot(fits$olsGrRt1,dfToUse = 2)
-dev.off()
-png(file.path(fig.dir,'OLS-GDPGrRt1-df3.png'),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
-fitPlot(fits$olsGrRt1,dfToUse = 3)
-dev.off()
+for(dfToUse in dfsToUse){
+	png(file.path(fig.dir,paste0('OLS-GDPGrRt1-df',dfToUse,'.png')),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
+	fitPlot(fits$olsGrRt1,dfToUse = dfToUse)
+	dev.off()
+}
 # fitPlot3d(fits$olsGrRt1$fit,'gdplag1','gdpGrRt',gdpGrRtSurfVals)
 
 ### GDP Gr Rt 4 ####
 fits$olsGrRt4 <- makePredAndDF(lm(gdpGrRt~
 																 	STA+I(STA^2)+gdplag1+year+I(year^2),data=mdataSubset),mdataSubset)
+sink(file.path(fig.dir,'OLS-GDPGrRt4.txt'))
 summary(fits$olsGrRt4$fit)
-fitPlot(fits$olsGrRt4)
-fitPlot3d(fits$olsGrRt4$fit,'gdplag1','gdpGrRt',gdpGrRtSurfVals)
+sink()
+for(dfToUse in dfsToUse){
+	png(file.path(fig.dir,paste0('OLS-GDPGrRt4-df',dfToUse,'.png')),width = fig.w*3*0.8,height = fig.h*4*0.8,units = fig.u,res = fig.res*0.25)
+	fitPlot(fits$olsGrRt4,dfToUse = dfToUse)
+	dev.off()
+}
+# fitPlot3d(fits$olsGrRt4$fit,'gdplag1','gdpGrRt',gdpGrRtSurfVals)
 
 ### GDP Gr Rt 2 ####
 fits$olsGrRt <- makePredAndDF(lm(gdpGrRt~
