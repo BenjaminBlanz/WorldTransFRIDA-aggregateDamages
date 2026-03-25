@@ -115,7 +115,7 @@ for(dataSubsetName in names(dataSubsets)){
 					lwd=4)
 	}
 	legend('topleft',legend = paste('STAts',stats.ids),
-				 pch=20,col=staCols[stats.ids])
+				 pch=20,col=staCols[as.character(stats.ids)])
 	dev.off()
 	cat('done\n')
 	
@@ -135,7 +135,7 @@ for(dataSubsetName in names(dataSubsets)){
 					lwd=4)
 	}
 	legend('topleft',legend = paste('STAts',stats.ids),
-				 pch=20,col=staCols[stats.ids])
+				 pch=20,col=staCols[as.character(stats.ids)])
 	dev.off()
 	cat('done\n')
 	
@@ -155,7 +155,7 @@ for(dataSubsetName in names(dataSubsets)){
 					lwd=4)
 	}
 	legend('topright',legend = paste('STAts',stats.ids),
-				 pch=20,col=staCols[stats.ids])
+				 pch=20,col=staCols[as.character(stats.ids)])
 	dev.off()
 	cat('done\n')
 	
@@ -175,7 +175,7 @@ for(dataSubsetName in names(dataSubsets)){
 					lwd=4)
 	}
 	legend('topleft',legend = paste('STAts',stats.ids),
-				 pch=20,col=staCols[stats.ids])
+				 pch=20,col=staCols[as.character(stats.ids)])
 	dev.off()
 	cat('done\n')
 	
@@ -188,7 +188,7 @@ for(dataSubsetName in names(dataSubsets)){
 			 xlab='Surface Temperature Anomaly K',ylab='GDP billion constant 2021 $',
 			 main='GDP vs STA')
 	legend('topleft',legend = paste('STAts',stats.ids),
-				 pch=20,col=staCols[stats.ids])
+				 pch=20,col=staCols[as.character(stats.ids)])
 	dev.off()
 	cat('done\n')
 	
@@ -201,7 +201,7 @@ for(dataSubsetName in names(dataSubsets)){
 			 xlab='Surface Temperature Anomaly K',ylab='GDP Change billion constant 2021 $',
 			 main='GDPd1 vs STA')
 	legend('topright',legend = paste('STAts',stats.ids),
-				 pch=20,col=staCols[stats.ids])
+				 pch=20,col=staCols[as.character(stats.ids)])
 	dev.off()
 	cat('done\n')
 	
@@ -214,7 +214,7 @@ for(dataSubsetName in names(dataSubsets)){
 			 xlab='Surface Temperature Anomaly K',ylab='Rate',
 			 main='GDP Growth Rate vs STA')
 	legend('topright',legend = paste('STAts',stats.ids),
-				 pch=20,col=staCols[stats.ids])
+				 pch=20,col=staCols[as.character(stats.ids)])
 	dev.off()
 	cat('done\n')
 }
