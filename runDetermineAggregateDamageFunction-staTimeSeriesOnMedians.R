@@ -183,7 +183,7 @@ for(dataSubsetName in names(dataSubsets)){
 	cat('plotting STA vs GDP...')
 	png(file.path(fig.dir,'3-GDPvsSTA.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 	plot(mData$STA,mData$GDP,type='p',pch=20,
-			 col=staCols[mData$staID],
+			 col=staCols[as.character(mData$staID)],
 			 xlim=c(0,max(mData$STA,na.rm=T)),ylim=c(0,2e6),
 			 xlab='Surface Temperature Anomaly K',ylab='GDP billion constant 2021 $',
 			 main='GDP vs STA')
@@ -196,7 +196,7 @@ for(dataSubsetName in names(dataSubsets)){
 	cat('plotting STA vs GDP Growth...')
 	png(file.path(fig.dir,'3-GDPd1vsSTA.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 	plot(mData$STA,mData$GDPd1,type='p',pch=20,
-			 col=staCols[mData$staID],
+			 col=staCols[as.character(mData$staID)],
 			 xlim=c(0,max(mData$STA,na.rm=T)),ylim=c(-1e3,1.2e4),
 			 xlab='Surface Temperature Anomaly K',ylab='GDP Change billion constant 2021 $',
 			 main='GDPd1 vs STA')
@@ -209,7 +209,7 @@ for(dataSubsetName in names(dataSubsets)){
 	cat('plotting STA vs GDP Growth...')
 	png(file.path(fig.dir,'3-GDPGrRtvsSTA.png'),width = fig.w,height = fig.h,units = fig.u,res = fig.res)
 	plot(mData$STA,mData$gdpGrRt,type='p',pch=20,
-			 col=staCols[mData$staID],
+			 col=staCols[as.character(mData$staID)],
 			 xlim=c(0,max(mData$STA,na.rm=T)),ylim=c(-0.01,0.06),
 			 xlab='Surface Temperature Anomaly K',ylab='Rate',
 			 main='GDP Growth Rate vs STA')
@@ -223,7 +223,7 @@ fig.dir <- fig.dir.orig
 ## STA vs GDP vs Time ####
 # library(rgl)
 # plot3d(mData$year,mData$STA,mData$GDP,
-# 			 col=staCols[mData$staID],
+# 			 col=staCols[as.character(mData$staID)],
 # 			 xlab='Year',ylab='STA (K)',
 # 			 zlab='GDP billion constant 2021 $')
 
@@ -296,7 +296,7 @@ predSurface <- function(fit,newdata){
 
 fitPlot3d <- function(fit,yvar,zvar,zvarSurfVals){
 	plot3d(mData$STA,mData[[yvar]],mData[[zvar]],
-				 col=staCols[mData$staID],
+				 col=staCols[as.character(mData$staID)],
 				 xlab='STA',ylab=yvar,
 				 zlab=zvar)
 	# points3d(medianData$year,medianData$STA,fits$ols2$pred)
