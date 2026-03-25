@@ -60,14 +60,15 @@ if(file.exists(dataFile)){
 	numYears <- length(years)
 	# embSta <- readRDS('workOutput/determineAggDam_Baseline-S20000-policy_EMB-ClimateFeedback_On-ClimateSTAOverride_Off/detectedParmSpace/PerVarFiles-RDS/energy_balance_model_surface_temperature_anomaly.RDS')
 	embStaTempOrd <- embSta[order(embSta[['2150']]),]
-	idsToSample <- embStaTempOrd$id[round(1+(nrow(embStaTempOrd)-1)*(0:(numSTAts-1))/(numSTAts-1))]
+	idsToSample <- as.character(embStaTempOrd$id[round(1+(nrow(embStaTempOrd)-1)*(0:(numSTAts-1))/(numSTAts-1))])
 	rm(embStaTempOrd)
+	
+	idsToSample <- c(idsToSample,extraSTAtsIDs)
 	
 	# forced STA runs ####
 	# send off the forced STA runs
-	forcedRunsExpIDpreSring <- 'forcedSTAts'
 	forcedRuns <- data.frame(STAid=idsToSample,expID=NA,staOverrideFileName=NA,status=NA)
-	for(STA.i in 1:numSTAts){
+	for(STA.i in 1:length(idsToSample)){
 		staOverrideFileName <- writeSTAForcingTS(
 			outputLocation=file.path(location.fridaUncertaintyWD,'FRIDA-configs'),
 			staTimeseriesID=idsToSample[STA.i])
@@ -126,7 +127,7 @@ if(file.exists(dataFile)){
 	
 	# read STA data ####
 	timeshifts <- c(1,-1:-5,-10,-20)
-	nrowOutput <- numSample*numYears*numSTAts
+	nrowOutput <- numSample*numYears*length(idsToSample)
 	data <- data.frame(
 		id=numeric(nrowOutput),staID=numeric(nrowOutput),
 		year=numeric(nrowOutput),STA=numeric(nrowOutput),
@@ -147,8 +148,9 @@ if(file.exists(dataFile)){
 		data<- cbind(data, newcolgdp, newcolsta)
 	}
 	cat('Processing STAts\n')
-	for(STA.i in 1:numSTAts){
-		cat(sprintf('\rProcessing STA.i %i of %i',STA.i,numSTAts))
+	for(STA.i in 1:length(idsToSample)){
+		cat('\r                                                                         ')
+		cat(sprintf('\rProcessing STA.i %i of %i',STA.i,length(idsToSample)))
 		gdpForThisSTAts <- readRDS(file.path(location.fridaUncertaintyWD,'workOutput',forcedRuns$expID[STA.i],
 																			 'detectedParmSpace','PerVarFiles-RDS','gdp_real_gdp_in_2021c.RDS'))
 		cat('.')
@@ -160,25 +162,31 @@ if(file.exists(dataFile)){
 		cat('.')
 		# NA out any incomplete entry but do not remove the rows, so that the indexing is not broken
 		gdpForThisSTAts[loglikeForThisSTAts$logLike < -1e200, -1] <- NA
-		gdpGrRtForThisSTAts[loglikeForThisSTAts$logLike < -1e200, -1] <- NA
 		
 		gdpForThisSTAts.timeshifts <- list()
 		staForThisSTAts.timeshifts <- list()
 		for(ts.i in 1:length(timeshifts)){
 			gdpForThisSTAts.timeshifts[[ts.i]] <- timeshiftData(gdpForThisSTAts,timeshifts[ts.i])
+			cat('.')
 			staForThisSTAts.timeshifts[[ts.i]] <- timeshiftData(staForThisSTAts,timeshifts[ts.i])
+			cat('.')
 		}
-		cat('.')
-		
 		idxForThisSTAts <- 1:(numSample*numYears)+(numSample*numYears)*(STA.i-1)
 		data$id[idxForThisSTAts]     <- rep(gdpForThisSTAts$id,ncol(gdpForThisSTAts)-1)
+		cat('.')
 		data$staID[idxForThisSTAts]  <- STA.i
+		cat('.')
 		data$year[idxForThisSTAts]   <- rep(as.numeric(colnames(gdpForThisSTAts[,-1])),each=nrow(gdpForThisSTAts))
+		cat('.')
 		data$STA[idxForThisSTAts]    <- unlist(staForThisSTAts[,-1])
+		cat('.')
 		data$GDP[idxForThisSTAts]    <- unlist(gdpForThisSTAts[,-1])
+		cat('.')
 		for(ts.i in 1:length(timeshifts)){
 			data[[timeshiftColNamesGDP[ts.i]]][idxForThisSTAts] <- unlist(gdpForThisSTAts.timeshifts[[ts.i]][,-1])
+			cat('.')
 			data[[timeshiftColNamesSTA[ts.i]]][idxForThisSTAts] <- unlist(staForThisSTAts.timeshifts[[ts.i]][,-1])
+			cat('.')
 		}
 	}
 	data$GDPd1 <- data$GDP - data$gdplag1

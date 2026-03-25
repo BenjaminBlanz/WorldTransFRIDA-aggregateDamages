@@ -8,6 +8,9 @@ numSample <- 2e4
 
 # The number of sta timeseries to pull from emb for running damages
 numSTAts <- 10
+# other STAts to run besides those pulled from EMB
+extraSTAtsIDs <- c('ToZero')
+
 
 # The first STA has to be 0 
 STAs <- c(0,1,2,3)
