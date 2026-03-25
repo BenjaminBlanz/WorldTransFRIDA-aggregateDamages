@@ -71,6 +71,7 @@ fig.res <- 600
 fig.u <- 'cm'
 
 staCols <- rainbow(numSTAts*3+1)[(numSTAts*2+1):(numSTAts*3)]
+names(staCols) <- stats.ids
 
 addSTAtsColLegend <- function(xleft,ybottom,xright,ytop){
 	oldXpd <- par('xpd')
@@ -110,7 +111,7 @@ for(dataSubsetName in names(dataSubsets)){
 	for(stats.id in stats.ids){
 		lines(mData$year[mData$staID==stats.id],
 					mData$GDP[mData$staID==stats.id],
-					col=staCols[stats.id],
+					col=staCols[as.character(stats.id)],
 					lwd=4)
 	}
 	legend('topleft',legend = paste('STAts',stats.ids),
@@ -130,7 +131,7 @@ for(dataSubsetName in names(dataSubsets)){
 	for(stats.id in stats.ids){
 		lines(mData$year[mData$staID==stats.id],
 					mData$GDPd1[mData$staID==stats.id],
-					col=staCols[stats.id],
+					col=staCols[as.character(stats.id)],
 					lwd=4)
 	}
 	legend('topleft',legend = paste('STAts',stats.ids),
@@ -150,7 +151,7 @@ for(dataSubsetName in names(dataSubsets)){
 	for(stats.id in stats.ids){
 		lines(mData$year[mData$staID==stats.id],
 					mData$gdpGrRt[mData$staID==stats.id],
-					col=staCols[stats.id],
+					col=staCols[as.character(stats.id)],
 					lwd=4)
 	}
 	legend('topright',legend = paste('STAts',stats.ids),
@@ -170,7 +171,7 @@ for(dataSubsetName in names(dataSubsets)){
 	for(stats.id in stats.ids){
 		lines(mData$year[mData$staID==stats.id],
 					mData$STA[mData$staID==stats.id],
-					col=staCols[stats.id],
+					col=staCols[as.character(stats.id)],
 					lwd=4)
 	}
 	legend('topleft',legend = paste('STAts',stats.ids),
